@@ -12,6 +12,6 @@ jobs:
     - name: Should generate README.md for tf12_bsic
       uses: terraform-docs/gh-actions@main
       with:
-        working-dir: complianceX/aws/terraform/PCI/VPC/1.0
-        output-method: inject
-        git-push: "true"
+        working-dir: complianceX/aws/terraform/PCI
+        recursive: true
+        recursive-path: .

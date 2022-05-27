@@ -3,13 +3,11 @@ formatter: markdown
 sections:
   show:
     - inputs
-    - outputs
 
 content: |-
   ## Exampless
 
   {{ .Inputs }}
-  {{ .Outputs }}
 
 output:
   file: ../../../../../docs/ltscale-cli/VPC.md
