@@ -15,6 +15,8 @@ pipeline {
          sh "echo hello world  ............ "
          sh "cd ~ && pwd && ls -la"
          sh "echo upper is directory"
+         sh "echo entering jenkins"
+         sh "sudo su jenkins"
          sh "ls -la"
          sh "pwd"
          sh "terraform --version"
