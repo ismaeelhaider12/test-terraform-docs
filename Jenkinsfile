@@ -11,6 +11,8 @@ pipeline {
     stage('Build') {
       steps {
          sh "echo hello world ........... "
+         sh "ls -la"
+         sh "pwd"
       }
     }  
 
