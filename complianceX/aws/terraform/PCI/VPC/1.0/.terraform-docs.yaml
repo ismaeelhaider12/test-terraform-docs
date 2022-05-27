@@ -1,28 +1,10 @@
-formatter: json
-
+formatter: markdown table
 sections:
+  hide-all: true
   show:
     - inputs
-    - outputs
-
-content: |-
-  ## Examples
-
-output:
-  file: README.md
-
 sort:
   enabled: true
-  by: type
-
+  by: required
 settings:
-  anchor: true
-  color: true
-  default: true
-  description: true
-  escape: true
-  html: true
-  indent: 2
-  required: true
-  sensitive: true
-  type: true
+  indent: 3

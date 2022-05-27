@@ -40,7 +40,7 @@ To create this entity in your **Litmus Scale** template, use the following data:
 
  
 <!-- BEGIN_TF_DOCS -->
-## Examples
+
 <!-- END_TF_DOCS -->
 
 ---
