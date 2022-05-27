@@ -13,6 +13,8 @@ pipeline {
     stage('Build') {
       steps {
          sh "echo hello world  ............ "
+         sh "cd ~ && pwd && ls -la"
+         sh "echo upper is directory"
          sh "ls -la"
          sh "pwd"
          sh "terraform --version"
