@@ -1,4 +1,4 @@
-formatter:  json
+formatter: json
 
 sections:
   show:
@@ -9,7 +9,7 @@ content: |-
   ## Examples
 
 output:
-  file: ../../../../../docs/ltscale-cli/VPC.md
+  file: README.md
 
 sort:
   enabled: true
