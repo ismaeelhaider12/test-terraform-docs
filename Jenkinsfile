@@ -16,6 +16,7 @@ pipeline {
          sh "ls -la"
          sh "pwd"
          sh "terraform --version"
+         sh "terraform-docs --version"
       }
     }  
 
