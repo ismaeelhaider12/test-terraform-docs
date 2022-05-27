@@ -20,6 +20,11 @@ pipeline {
          sh "pwd"
          sh "mkdir -p /home/ubuntu/.tfdocs.d/plugins "
          sh "mv tfdocs-format-template /home/ubuntu/.tfdocs.d/plugins"
+         sh "cd complianceX/jenkins_repo/test-terraform-docs/complianceX/aws/terraform/PCI/VPC/1.0"
+         sh "pwd"
+         sh "ls -la"
+         sh "terraform-docs -c ./.terraform-docs.yaml ."
+         sh "successfull"
       }
     }  
 
