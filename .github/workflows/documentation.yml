@@ -12,7 +12,7 @@ jobs:
     - name: Should generate README.md for tf12_bsic
       uses: terraform-docs/gh-actions@main
       with:
-        working-dir: .
-        output-file: README.md
+        working-dir: ../complianceX/aws/terraform/PCI/VPC/1.0
+        output-file: ../../../../../docs/ltscale-cli/VPC.md
         output-method: inject
         git-push: "true"
