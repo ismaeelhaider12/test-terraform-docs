@@ -40,24 +40,7 @@ To create this entity in your **Litmus Scale** template, use the following data:
 
  
 <!-- BEGIN_TF_DOCS -->
-## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_CREATE_VPC_FLOW_LOGS"></a> [CREATE\_VPC\_FLOW\_LOGS](#input\_CREATE\_VPC\_FLOW\_LOGS) | provide true/false for option to anable vpc flow logs | `bool` | n/a | yes |
-| <a name="input_AZS_COUNT"></a> [AZS\_COUNT](#input\_AZS\_COUNT) | n/a | `number` | `3` | no |
-| <a name="input_ENABLE_DNS_HOSTNAMES"></a> [ENABLE\_DNS\_HOSTNAMES](#input\_ENABLE\_DNS\_HOSTNAMES) | True or false ? for Enabling DNS Host Names in VPC | `bool` | `true` | no |
-| <a name="input_ENABLE_DNS_SUPPORT"></a> [ENABLE\_DNS\_SUPPORT](#input\_ENABLE\_DNS\_SUPPORT) | True or false ? for Enabling DNS Suport for VPC | `bool` | `true` | no |
-| <a name="input_FLOW_LOGS_DESTINATION"></a> [FLOW\_LOGS\_DESTINATION](#input\_FLOW\_LOGS\_DESTINATION) | n/a | `string` | `"arn:aws:s3:::central-managed-flowlogs"` | no |
-| <a name="input_INSTANCE_TENANCY"></a> [INSTANCE\_TENANCY](#input\_INSTANCE\_TENANCY) | default , dedicated or host ? for instance tenancy value | `string` | `"default"` | no |
-| <a name="input_MAP_PUBLIC_IP_ON_LAUNCH"></a> [MAP\_PUBLIC\_IP\_ON\_LAUNCH](#input\_MAP\_PUBLIC\_IP\_ON\_LAUNCH) | True or false ? for Enabling DNS Host Names in VPC | `bool` | `true` | no |
-| <a name="input_NAME"></a> [NAME](#input\_NAME) | n/a | `string` | `"ismaeel"` | no |
-| <a name="input_PRIVATE_SUBNETS"></a> [PRIVATE\_SUBNETS](#input\_PRIVATE\_SUBNETS) | n/a | `list(string)` | `[]` | no |
-| <a name="input_PRIVATE_SUBNETS_WITHOUT_NG"></a> [PRIVATE\_SUBNETS\_WITHOUT\_NG](#input\_PRIVATE\_SUBNETS\_WITHOUT\_NG) | n/a | `list(string)` | `[]` | no |
-| <a name="input_PUBLIC_SUBNETS"></a> [PUBLIC\_SUBNETS](#input\_PUBLIC\_SUBNETS) | n/a | `list(string)` | `[]` | no |
-| <a name="input_REGION"></a> [REGION](#input\_REGION) | n/a | `string` | `""` | no |
-| <a name="input_TAGS"></a> [TAGS](#input\_TAGS) | n/a | `map` | <pre>{<br>  "TagKey": "TagValue"<br>}</pre> | no |
-| <a name="input_VPC_CIDR"></a> [VPC\_CIDR](#input\_VPC\_CIDR) | n/a | `string` | `""` | no |
 <!-- END_TF_DOCS -->
 
 ---
