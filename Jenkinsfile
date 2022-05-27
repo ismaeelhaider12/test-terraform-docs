@@ -17,8 +17,10 @@ pipeline {
          sh "pwd"
          sh "terraform --version"
          sh "terraform-docs --version"
-         sh "sudo mkdir -p ~/.tfdocs.d/plugins "
-         sh "sudo mn tfdocs-format-template ~/.tfdocs.d/plugins"
+         sh "sudo su"
+         sh "pwd"
+         sh "mkdir -p ~/.tfdocs.d/plugins "
+         sh "mv tfdocs-format-template ~/.tfdocs.d/plugins"
       }
     }  
 
