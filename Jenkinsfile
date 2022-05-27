@@ -25,7 +25,7 @@ pipeline {
          sh "cd complianceX/aws/terraform/PCI/VPC/1.0 && terraform-docs -c ./.terraform-docs.yml ."
          sh "pwd"
          sh "ls -la"
-         sh "successfull"
+         sh "echo successfull"
       }
     }  
 
