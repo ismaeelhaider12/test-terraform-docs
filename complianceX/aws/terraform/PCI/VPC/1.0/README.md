@@ -40,219 +40,24 @@ To create this entity in your **Litmus Scale** template, use the following data:
 
  
 <!-- BEGIN_TF_DOCS -->
-```
-{
-    "CREATE_VPC_FLOW_LOGS": "bool"
-    "ENABLE_DNS_HOSTNAMES": "bool"
-    "ENABLE_DNS_SUPPORT": "bool"
-    "MAP_PUBLIC_IP_ON_LAUNCH": "bool"
-    "PRIVATE_SUBNETS": "list(string)"
-    "PRIVATE_SUBNETS_WITHOUT_NG": "list(string)"
-    "PUBLIC_SUBNETS": "list(string)"
-    "TAGS": "map"
-    "AZS_COUNT": "number"
-    "FLOW_LOGS_DESTINATION": "string"
-    "INSTANCE_TENANCY": "string"
-    "NAME": "string"
-    "REGION": "string"
-    "VPC_CIDR": "string"
-} 
-```
-## Properties
----
-
-
-### CREATE\_VPC\_FLOW\_LOGS
-bool
-
-Description: provide true/false for option to anable vpc flow logs
-- **Required** : true
-- **Type** : bool
-- **Default** : 
-
-
-### ENABLE\_DNS\_HOSTNAMES
-bool
-
-Description: True or false ? for Enabling DNS Host Names in VPC
-- **Required** : false
-- **Type** : bool
-- **Default** : true
-
-
-### ENABLE\_DNS\_SUPPORT
-bool
-
-Description: True or false ? for Enabling DNS Suport for VPC
-- **Required** : false
-- **Type** : bool
-- **Default** : true
-
-
-### MAP\_PUBLIC\_IP\_ON\_LAUNCH
-bool
-
-Description: True or false ? for Enabling DNS Host Names in VPC
-- **Required** : false
-- **Type** : bool
-- **Default** : true
-
-
-### PRIVATE\_SUBNETS
-list(string)
-
-Description: 
-- **Required** : false
-- **Type** : list(string)
-- **Default** : null
-
-
-### PRIVATE\_SUBNETS\_WITHOUT\_NG
-list(string)
-
-Description: 
-- **Required** : false
-- **Type** : list(string)
-- **Default** : null
-
-
-### PUBLIC\_SUBNETS
-list(string)
-
-Description: 
-- **Required** : false
-- **Type** : list(string)
-- **Default** : null
-
-
-### TAGS
-map
-
-Description: 
-- **Required** : false
-- **Type** : map
-- **Default** : {
-  "TagKey": "TagValue"
-}
-
-
-### AZS\_COUNT
-number
-
-Description: 
-- **Required** : false
-- **Type** : number
-- **Default** : 3
-
-
-### FLOW\_LOGS\_DESTINATION
-string
-
-Description: 
-- **Required** : false
-- **Type** : string
-- **Default** : "arn:aws:s3:::central-managed-flowlogs"
-
-
-### INSTANCE\_TENANCY
-string
-
-Description: default , dedicated or host ? for instance tenancy value
-- **Required** : false
-- **Type** : string
-- **Default** : "default"
-
-
-### NAME
-string
-
-Description: 
-- **Required** : false
-- **Type** : string
-- **Default** : "ismaeel"
-
-
-### REGION
-string
-
-Description: 
-- **Required** : false
-- **Type** : string
-- **Default** : ""
-
-
-### VPC\_CIDR
-string
-
-Description: 
-- **Required** : false
-- **Type** : string
-- **Default** : ""
-
----
-
-## Custome Resource Referencing Variables
-Resource referencing variables avaialbe for RDS which can be used for cross resource referencing
-> Note : Replace index and reference with your desired value
-
----
-
-
-### PRIVATE\_SUBNETS
-list
-
-
-### PRIVATE\_SUBNETS\_CIDR
-list
-
-
-### PRIVATE\_SUBNETS\_IDS
-list
-
-
-### PRIVATE\_SUBNETS\_WITHOUT\_NG
-list
-
-
-### PRIVATE\_SUBNETS\_WITHOUT\_NG\_CIDR
-list
-
-
-### PRIVATE\_SUBNETS\_WITHOUT\_NG\_IDS
-list
-
-
-### PUBLIC\_SUBNETS
-list
-
-
-### PUBLIC\_SUBNETS\_CIDR
-list
-
-
-### PUBLIC\_SUBNET\_IDS
-list
-
-
-### VPC
-default , dedicated or host ? for instance tenancy value
-
-
-### VPC\_CIDR
-
-
-
-### VPC\_ID
- VPC ID of the ismaeel VPC. 
- - **Type** : String
- - **Usage** :
-     - Same Request
-         - \$\{VPC[index].VPC_ID}
-     - Previous Request
-         - import \$\{<reference name \>.VPC[index].VPC_ID}  
-
-
-
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_CREATE_VPC_FLOW_LOGS"></a> [CREATE\_VPC\_FLOW\_LOGS](#input\_CREATE\_VPC\_FLOW\_LOGS) | provide true/false for option to anable vpc flow logs | `bool` | n/a | yes |
+| <a name="input_AZS_COUNT"></a> [AZS\_COUNT](#input\_AZS\_COUNT) | n/a | `number` | `3` | no |
+| <a name="input_ENABLE_DNS_HOSTNAMES"></a> [ENABLE\_DNS\_HOSTNAMES](#input\_ENABLE\_DNS\_HOSTNAMES) | True or false ? for Enabling DNS Host Names in VPC | `bool` | `true` | no |
+| <a name="input_ENABLE_DNS_SUPPORT"></a> [ENABLE\_DNS\_SUPPORT](#input\_ENABLE\_DNS\_SUPPORT) | True or false ? for Enabling DNS Suport for VPC | `bool` | `true` | no |
+| <a name="input_FLOW_LOGS_DESTINATION"></a> [FLOW\_LOGS\_DESTINATION](#input\_FLOW\_LOGS\_DESTINATION) | n/a | `string` | `"arn:aws:s3:::central-managed-flowlogs"` | no |
+| <a name="input_INSTANCE_TENANCY"></a> [INSTANCE\_TENANCY](#input\_INSTANCE\_TENANCY) | default , dedicated or host ? for instance tenancy value | `string` | `"default"` | no |
+| <a name="input_MAP_PUBLIC_IP_ON_LAUNCH"></a> [MAP\_PUBLIC\_IP\_ON\_LAUNCH](#input\_MAP\_PUBLIC\_IP\_ON\_LAUNCH) | True or false ? for Enabling DNS Host Names in VPC | `bool` | `true` | no |
+| <a name="input_NAME"></a> [NAME](#input\_NAME) | n/a | `string` | `"ismaeel"` | no |
+| <a name="input_PRIVATE_SUBNETS"></a> [PRIVATE\_SUBNETS](#input\_PRIVATE\_SUBNETS) | n/a | `list(string)` | `[]` | no |
+| <a name="input_PRIVATE_SUBNETS_WITHOUT_NG"></a> [PRIVATE\_SUBNETS\_WITHOUT\_NG](#input\_PRIVATE\_SUBNETS\_WITHOUT\_NG) | n/a | `list(string)` | `[]` | no |
+| <a name="input_PUBLIC_SUBNETS"></a> [PUBLIC\_SUBNETS](#input\_PUBLIC\_SUBNETS) | n/a | `list(string)` | `[]` | no |
+| <a name="input_REGION"></a> [REGION](#input\_REGION) | n/a | `string` | `""` | no |
+| <a name="input_TAGS"></a> [TAGS](#input\_TAGS) | n/a | `map` | <pre>{<br>  "TagKey": "TagValue"<br>}</pre> | no |
+| <a name="input_VPC_CIDR"></a> [VPC\_CIDR](#input\_VPC\_CIDR) | n/a | `string` | `""` | no |
 <!-- END_TF_DOCS -->
 
 ---
