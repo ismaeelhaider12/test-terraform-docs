@@ -1,4 +1,4 @@
-formatter:  template
+formatter:  json
 
 sections:
   show:
