@@ -1,7 +1,6 @@
 pipeline {
   agent any  
   stages {
-    tools {terraform "terraform"}
     stage('Git') {
       steps {
         git branch: 'main', url: 'https://github.com/ismaeelhaider12/test-terraform-docs.git'
