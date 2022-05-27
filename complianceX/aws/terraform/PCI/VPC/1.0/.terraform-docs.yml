@@ -3,6 +3,7 @@ formatter: json
 sections:
   show:
     - inputs
+    - outputs
 
 content: |-
   ## Exampless
@@ -10,6 +11,7 @@ content: |-
   ## ISmaeel Haider
 
   {{ .Inputs }}
+  {{ .Ouputs }}
 
 output:
   file: ../../../../../docs/ltscale-cli/VPC.md
