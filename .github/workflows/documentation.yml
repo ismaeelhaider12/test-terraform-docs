@@ -12,5 +12,5 @@ jobs:
     - name: Should generate README.md for tf12_bsic
       uses: ./
       with:
-        working-dir: ./complianceX/aws/terraform/PCI/VPC/1.0
+        working-dir: complianceX/aws/terraform/PCI/VPC/1.0
         config-file: .terraform-docs.yml
