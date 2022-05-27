@@ -6,13 +6,13 @@ sections:
     - outputs
 
 content: |-
-  ## Examples
+  ## Exampless
 
   {{ .Inputs }}
   {{ .Outputs }}
 
 output:
-  file: README.md
+  file: ../../../../../docs/ltscale-cli/VPC.md
 
 sort:
   enabled: true
