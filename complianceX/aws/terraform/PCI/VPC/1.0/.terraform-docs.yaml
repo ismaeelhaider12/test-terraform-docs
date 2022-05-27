@@ -1,6 +1,5 @@
 formatter: markdown table
 sections:
-  hide-all: true
   show:
     - inputs
 sort:
