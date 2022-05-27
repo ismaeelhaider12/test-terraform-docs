@@ -13,6 +13,7 @@ pipeline {
     stage('Build') {
       steps {
          sh "echo hello world  ............ "
+         sh "whoami"
          sh "cd ~ && pwd && ls -la"
          sh "echo upper is directory"
          sh "echo entering jenkins"
