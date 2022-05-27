@@ -1,0 +1,354 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ManagedResourcePrefix:
+    Type: String
+    Description: Prefix for the managed resources
+  VolumeSize:
+    Type: Number
+    Description: instance volume size
+  ImageId:   
+    Type: String
+    Description: Instance image id
+  InstanceType:
+    Type: String
+    Description: Instance type
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: key pair for ssh
+  InstanceName:
+    Type: String
+    Description: Instance name  
+  MasterMinSize:
+    Type: Number
+    Description: instance minimum size
+  MasterMaxSize:
+    Type: Number
+    Description: instance maximum size
+  MasterDesiredCapacity:
+    Type: Number
+    Description: instance desired capacity
+  WorkerMinSize:
+    Type: Number
+    Description: instance minimum size
+  WorkerMaxSize:
+    Type: Number
+    Description: instance maximum size
+  WorkerDesiredCapacity:
+    Type: Number
+    Description: instance desired capacity
+  LBSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: list of Subnets for load balancer
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: list of Subnets
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Vpc id for securityGroup
+
+
+Resources:
+
+  SGWazuhmanager:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ManagedResourcePrefix}-wazuhmanager
+      GroupDescription: Security Group for the Wazuh manager
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        FromPort: 0
+        ToPort: 0
+        CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+      - IpProtocol: -1
+        FromPort: 0
+        ToPort: 0
+        CidrIp: 0.0.0.0/0
+
+  EC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+      RoleName: !Sub ${ManagedResourcePrefix}-wazuhmanagerrole
+  EC2RoleInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !Sub ${ManagedResourcePrefix}-wazuhmanagerIP
+      Path: /
+      Roles:
+        - !Ref EC2Role
+
+  LTwazuhmaster:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: !Sub ${ManagedResourcePrefix}-wazuhmaster
+      LaunchTemplateData:
+        IamInstanceProfile: 
+          Name: !Ref EC2RoleInstanceProfile
+        UserData:
+                "Fn::Base64": !Sub |
+                    #!/bin/bash  
+                    yum update -y
+                    yum install curl unzip wget libcap -y
+                    rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+                    cat > /etc/yum.repos.d/wazuh.repo << EOF
+                    [wazuh]
+                    gpgcheck=1
+                    gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+                    enabled=1
+                    name=EL-\$releasever - Wazuh
+                    baseurl=https://packages.wazuh.com/4.x/yum/
+                    protect=1
+                    EOF
+                    yum install wazuh-manager   -y
+                    systemctl daemon-reload
+                    systemctl enable wazuh-manager
+                    systemctl start wazuh-manager
+
+                    sleep 60
+                    yum update -y
+                    curl -L https://toolbelt.treasuredata.com/sh/install-amazon2-td-agent4.sh | sh
+                    systemctl daemon-reload
+                    systemctl start td-agent.service
+                    yum install gem -y 
+                    amazon-linux-extras list
+                    amazon-linux-extras install ruby2.6 -y
+                    yum install ruby-devel -y
+                    td-agent-gem install fluent-plugin-sqs
+                    systemctl restart td-agent
+                    sed -i '12 i <source>\n  @type tail\n  path /var/ossec/logs/alerts/alerts.json\n  pos_file /var/log/td-agent/httpd-access.log.pos\n  tag ossec\n  <parse>\n    @type json\n  </parse>\n</source>\n\n<match ossec>\n  @type sqs\n  sqs_url https://sqs.us-east-1.amazonaws.com/059516066038/central-managed-logging-queue\n  region us-east-1\n</match>\n' /etc/td-agent/td-agent.conf
+                    usermod -a -G ossec td-agent
+                    sed -i -e 's/NODE_IP/${LoadBalancer.DNSName}/g' /var/ossec/etc/ossec.conf
+                    sed -i '328d' /var/ossec/etc/ossec.conf
+                    sed -i '328 i <key>c98b62a9b6169ac5f67dae55ae4a9088</key> ' /var/ossec/etc/ossec.conf
+                    sed -i -e 's/node01/master-node'$RANDOM'/g' /var/ossec/etc/ossec.conf
+                    sed -i '335d' /var/ossec/etc/ossec.conf
+                    sed -i '335 i <disabled>no</disabled> ' /var/ossec/etc/ossec.conf
+                    sed -i '315d' /var/ossec/etc/ossec.conf
+                    sed -i '315 i <use_password>yes</use_password> ' /var/ossec/etc/ossec.conf
+                    echo "StarGate@22" > /var/ossec/etc/authd.pass
+                    systemctl restart wazuh-manager
+                    systemctl restart td-agent.service                    
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: !Ref VolumeSize
+              VolumeType: gp2
+              DeleteOnTermination: true
+              Encrypted: true
+            DeviceName: /dev/xvda	
+        ImageId: !Ref ImageId
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref KeyName
+        SecurityGroupIds: 
+        - !Ref SGWazuhmanager
+
+  ASGWazuhMaster:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub ${ManagedResourcePrefix}-wazuhmaster
+      MinSize: !Ref MasterMinSize
+      MaxSize: !Ref MasterMaxSize
+      DesiredCapacity: !Ref MasterDesiredCapacity
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LTwazuhmaster
+        Version: !GetAtt LTwazuhmaster.LatestVersionNumber
+      VPCZoneIdentifier: !Ref Subnets
+      TargetGroupARNs: 
+        - !Ref TargetGroup1514
+        - !Ref TargetGroup1515
+        - !Ref TargetGroup1516
+        - !Ref TargetGroup55000
+      Tags:
+        - Key: Name
+          Value: !Sub ${InstanceName}-master
+          PropagateAtLaunch: true
+
+  LTwazuhworker:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: !Sub ${ManagedResourcePrefix}-wazuhworker
+      LaunchTemplateData: 
+        IamInstanceProfile: 
+          Name: !Ref EC2RoleInstanceProfile
+        UserData:
+                "Fn::Base64": !Sub |
+                    #!/bin/bash  
+                    yum update -y
+                    yum install curl unzip wget libcap -y
+                    rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+                    cat > /etc/yum.repos.d/wazuh.repo << EOF
+                    [wazuh]
+                    gpgcheck=1
+                    gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+                    enabled=1
+                    name=EL-\$releasever - Wazuh
+                    baseurl=https://packages.wazuh.com/4.x/yum/
+                    protect=1
+                    EOF
+                    yum install wazuh-manager   -y
+                    systemctl daemon-reload
+                    systemctl enable wazuh-manager
+                    systemctl start wazuh-manager
+
+                    sleep 60
+                    yum update -y
+                    curl -L https://toolbelt.treasuredata.com/sh/install-amazon2-td-agent4.sh | sh
+                    systemctl daemon-reload
+                    systemctl start td-agent.service
+                    yum install gem -y 
+                    amazon-linux-extras list
+                    amazon-linux-extras install ruby2.6 -y
+                    yum install ruby-devel -y
+                    td-agent-gem install fluent-plugin-sqs
+                    systemctl restart td-agent
+                    sed -i '12 i <source>\n  @type tail\n  path /var/ossec/logs/alerts/alerts.json\n  pos_file /var/log/td-agent/httpd-access.log.pos\n  tag ossec\n  <parse>\n    @type json\n  </parse>\n</source>\n\n<match ossec>\n  @type sqs\n  sqs_url https://sqs.us-east-1.amazonaws.com/059516066038/central-managed-logging-queue\n  region us-east-1\n</match>\n' /etc/td-agent/td-agent.conf
+                    usermod -a -G ossec td-agent
+                    sed -i -e 's/NODE_IP/${LoadBalancer.DNSName}/g' /var/ossec/etc/ossec.conf
+                    sed -i '327d' /var/ossec/etc/ossec.conf
+                    sed -i '327 i <node_type>worker</node_type> ' /var/ossec/etc/ossec.conf
+                    sed -i '328d' /var/ossec/etc/ossec.conf
+                    sed -i '328 i <key>c98b62a9b6169ac5f67dae55ae4a9088</key> ' /var/ossec/etc/ossec.conf
+                    sed -i -e 's/node01/worker-node'$RANDOM'/g' /var/ossec/etc/ossec.conf
+                    sed -i '335d' /var/ossec/etc/ossec.conf
+                    sed -i '335 i <disabled>no</disabled> ' /var/ossec/etc/ossec.conf
+                    sed -i '315d' /var/ossec/etc/ossec.conf
+                    sed -i '315 i <use_password>yes</use_password> ' /var/ossec/etc/ossec.conf
+                    echo "StarGate@22" > /var/ossec/etc/authd.pass
+                    systemctl restart wazuh-manager
+                    systemctl restart td-agent.service                    
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: !Ref VolumeSize
+              VolumeType: gp2
+              DeleteOnTermination: true
+              Encrypted: true
+            DeviceName: /dev/xvda	
+        ImageId: !Ref ImageId
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref KeyName
+        SecurityGroupIds: 
+        - !Ref SGWazuhmanager
+
+  ASGWazuhWorker:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub ${ManagedResourcePrefix}-wazuhworker
+      MinSize: !Ref WorkerMinSize
+      MaxSize: !Ref WorkerMaxSize
+      DesiredCapacity: !Ref WorkerDesiredCapacity
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LTwazuhworker
+        Version: !GetAtt LTwazuhworker.LatestVersionNumber
+      VPCZoneIdentifier: !Ref Subnets
+      TargetGroupARNs: 
+        - !Ref TargetGroup1514
+        - !Ref TargetGroup1515
+        - !Ref TargetGroup55000
+      Tags:
+        - Key: Name
+          Value: !Sub ${InstanceName}-worker
+          PropagateAtLaunch: true
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-wazuhmanager
+      Subnets: !Ref LBSubnets
+      Type: network
+
+  TargetGroup1514:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-wazuhmanager1514
+      Port: 1514
+      Protocol: TCP
+      VpcId: !Ref VpcId
+
+  Listener1514:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup1514
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 1514
+      Protocol: TCP  
+
+  TargetGroup1515:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-wazuhmanager1515
+      Port: 1515
+      Protocol: TCP
+      VpcId: !Ref VpcId
+
+  Listener1515:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup1515
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 1515
+      Protocol: TCP    
+
+  TargetGroup1516:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-wazuhmanager1516
+      Port: 1516
+      Protocol: TCP
+      VpcId: !Ref VpcId
+
+  Listener1516:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup1516
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 1516
+      Protocol: TCP    
+
+  TargetGroup55000:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-wazuhmanager
+      Port: 55000
+      Protocol: TCP
+      VpcId: !Ref VpcId
+
+  Listener55000:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup55000
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 55000
+      Protocol: TCP         
+
+
+Outputs:
+  LoadBalancerDnsName:
+    Description: LoadBalancer DNS
+    Value: !GetAtt LoadBalancer.DNSName

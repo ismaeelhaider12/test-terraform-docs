@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-worker
+spec:
+  selector:
+    matchLabels:
+      app: logging-worker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: logging-worker
+    spec:
+      containers:
+      - name: logging-worker
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+        ports:
+        - containerPort: 8003
+        env:  
+        - name: DATABASE_NAME
+          value: "compliancexdb"
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_PASSWORD
+        - name: MONGO_USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_USER_NAME
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_PASSWORD
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_PASSWORD
+        - name: DATABASE_HOST 
+          value: "172.30.3.103"
+        - name: NO_SQL_ROUTER_NAME
+          value: ""
+        - name: NO_SQL_DATABASE_NAME 
+          value: "compliancexdb"
+        - name: RABBITMQ_HOST
+          value: "172.30.3.103"
+        - name: EXPORT_LOGS_BUCKET
+          value: "059516066038-export-logs-bucket"
+        - name: NO_SQL_HOST
+          value: "172.30.3.103"
+        - name: WAZUH_SQS_QUEUE_URL 
+          value: "https://sqs.us-east-1.amazonaws.com/059516066038/central-managed-logging-queue"
+        - name: AWS_OU_DEFAULT_ROLE
+          value: "central-managed-AdministratorAccess"
+        - name: AWS_ROLE_ARN_FOR_ORGANIZATION
+          value: "arn:aws:iam::841423564411:role/OrganizationAssumeRole"
+        - name: CONTROL_ACCOUNT_ID
+          value: "059516066038"
+        - name: CONTROL_ACCOUNT_REGION
+          value: "us-east-1"
+        - name: SERVICE_DESK_URL
+          value: "http://ticketingsystem-web:8018/"
+        - name: TICKETING_USER_TOKEN
+          value: "4185d705b9f804ecbc03e068d289075609accf86"
+        command: ["/bin/sh","-c"]
+        args: ["celery --app coreconfig worker --beat --loglevel=info -l info -Q    logging_worker_TaskQ"]

@@ -1,0 +1,321 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  ManagedResourcePrefix:
+    Description: Prefix for the managed resources.
+    Type: String
+
+  ContainerName:
+    Description: Provide name for your containers.
+    Type: String
+
+  ContainerImage:
+    Description: Provide image
+    Type: String  
+
+  ContainerPort:
+    Description: Provide container Port on which container will server traffic.
+    Type: Number
+
+  ContainerCPU:
+    Description: Provide CPU value for containers.
+    Type: Number
+    Default: 512
+
+  ContainerMemory:
+    Description: Provide Memory value (in GBs for example 0.5GB) for containers.
+    Type: String
+    Default: 1024
+
+  DesiredNumber:
+    Description: Provide the Desired Count for containers.
+    Type: Number
+
+  DBPassword:
+    Description: Database password
+    Type: String
+    NoEcho: true
+
+  DBUser:
+    Description: Database user
+    Type: String
+    NoEcho: true
+
+  DBName:
+    Description: Database name
+    Type: String
+
+  VpcId:
+    Description: Choose VPC id.
+    Type: AWS::EC2::VPC::Id
+ 
+  PublicSubnets:
+    Description: Choose list of Public Subnets ids.
+    Type: List<AWS::EC2::Subnet::Id>
+
+  PrivateSubnets:
+    Description: Choose list of Private Subnets ids.
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+
+  DATABASEUSER:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: DATABASE_USER
+      Type: String
+      Value: !Ref DBUser
+      Description: Database User Name
+
+  DATABASEPASSWORD:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: DATABASE_PASSWORD
+      Type: String
+      Value: !Ref DBPassword
+      Description: Database Password
+
+  DATABASENAME:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: DATABASE_NAME
+      Type: String
+      Value: !Ref DBName
+      Description: Database Name
+
+
+  ECSCluster:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      ClusterName: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      CapacityProviders:
+        - FARGATE
+      Tags:
+        - Key: Name
+          Value: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ManagedResourcePrefix}_idp_server
+      Cpu: !Ref ContainerCPU
+      Memory: !Ref ContainerMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ExecutionRole
+      TaskRoleArn: !Ref ExecutionRole
+      Tags:
+        - Key: Name
+          Value: !Sub ${ManagedResourcePrefix}-${AWS::StackName}-Task-Defination
+      ContainerDefinitions:
+        - Name: !Ref ContainerName
+          Command:
+          - /bin/sh -c "service nginx start &&  python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind :8080 --log-level debug --workers 1 --threads $(( 2 * `cat /proc/cpuinfo | grep 'core id' | wc -l` + 1 )) --timeout 90 identity_provider.wsgi"
+          EntryPoint:
+          - sh
+          - -c
+          image: !Ref ContainerImage
+          Secrets:
+            - Name: DATABASE_NAME
+              ValueFrom: !Ref DATABASENAME
+            - Name: DATABASE_USER
+              ValueFrom: !Ref DATABASEUSER
+            - Name: DATABASE_PASSWORD
+              ValueFrom: !Ref DATABASEPASSWORD
+          Environment: 
+            - Name: ENCRYPT_KEY
+              Value: Pw0btFTOJkEuzpbRdLd6vaUy8Xd3E6rvFXh5dQVq484=
+            - Name: REDIRECT_URLS
+              Value: https://admin.demo.litmusscale.com/redirect
+            - Name: DATABASE_HOST
+              Value: '172.30.3.103'
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+          LogConfiguration:
+            LogDriver: awslogs
+            options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: "IDP-Tasklogs"
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ManagedResourcePrefix}-${AWS::StackName}-executionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess
+        - arn:aws:iam::aws:policy/AutoScalingConsoleFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+
+  ParameterStore: 
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${ManagedResourcePrefix}-${AWS::StackName}-parameterpolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: 
+              - "ssm:GetParametersByPath"
+              - "ssm:GetParameters"
+              - "ssm:GetParameter"
+              - "ssm:GetParameterHistory"
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*"
+          - Effect: Allow
+            Action: 
+              - "ssm:DescribeParameters"
+            Resource: "*"
+      Roles:
+        - !Ref ExecutionRole
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      ServiceName: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      Cluster: !Ref ECSCluster
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      TaskDefinition: !Ref TaskDefinition
+      HealthCheckGracePeriodSeconds: 60
+      EnableECSManagedTags: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: !Ref DesiredNumber
+      LoadBalancers:
+        - ContainerName: !Ref ContainerName
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Ref PrivateSubnets
+          SecurityGroups:
+            - !Ref SecurityGroup
+
+
+  ApplicationLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref PublicSubnets       
+      SecurityGroups: 
+      - !Ref SecurityGroup
+      IpAddressType: "ipv4"
+      Tags:
+        - Key: Name
+          Value: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+
+  LoadBalancerHTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: arn:aws:acm:us-east-1:059516066038:certificate/e8b4ab48-0dca-48dc-9198-33dc247a6d3b
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Conditions:
+        - Field: host-header
+          Values:
+            - "*.*"
+      Actions:
+      - RedirectConfig:
+          Port: 443
+          Protocol: HTTPS
+          StatusCode: 'HTTP_301'
+        Type: redirect
+      ListenerArn: !Ref LoadBalancerListener
+      Priority: 1
+
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Name: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: "/healthcheck"
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPort: "traffic-port"
+      HealthCheckProtocol: "HTTP"
+      HealthCheckTimeoutSeconds: 5
+      UnhealthyThresholdCount: 3
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200
+      VpcId: !Ref VpcId
+      HealthCheckEnabled: true          
+
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub ${ManagedResourcePrefix}-${AWS::StackName} 
+      RetentionInDays: 7
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: !Ref ContainerPort
+        ToPort: !Ref ContainerPort
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: "-1"
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ManagedResourcePrefix}-${AWS::StackName}
+
+Outputs:
+  TargetGroupID:
+    Value: !Ref TargetGroup
+    Description: Target Group Id.
+
+  LoadBalancerDNS:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Description: DNS name of LoadBalancer.

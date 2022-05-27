@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: S3 bucket for general logging and S3 logging
+
+Parameters:
+  ManagedResourcePrefix:
+    Type: 'String'
+    Description: 'Prefix for the managed resources'
+
+Conditions:
+  USEASTRegion: !Equals
+    - 'us-east-1'
+    - !Sub '${AWS::Region}'
+
+Resources:
+  # Create S3 Logging bucket
+  LoggingBucket:
+    Type: "AWS::S3::Bucket"
+    Condition: USEASTRegion
+    Properties:
+      BucketName: !Sub ${AWS::AccountId}-logging
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+      VersioningConfiguration:
+        Status: "Enabled"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      AccessControl: "LogDeliveryWrite"
+
+  LoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: USEASTRegion
+    Properties: 
+      Bucket: !Ref LoggingBucket
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Sid: '1'
+          Effect: Deny
+          Principal: "*"
+          Action: "*"
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: AWSLogDeliveryWrite
+          Effect: Allow
+          Principal:
+            Service: delivery.logs.amazonaws.com
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging/*
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Sid: AWSLogDeliveryAclCheck
+          Effect: Allow
+          Principal:
+            Service: delivery.logs.amazonaws.com
+          Action: s3:GetBucketAcl
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging
+
+  # Create S3 Logging bucket
+  S3LoggingBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub ${AWS::AccountId}-logging-${AWS::Region}
+      # LoggingConfiguration:
+      #   DestinationBucketName: !Sub ${AWS::AccountId}-logging
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+      VersioningConfiguration:
+        Status: "Enabled"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      AccessControl: "LogDeliveryWrite"
+
+  S3LoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref S3LoggingBucket
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Sid: '1'
+          Effect: Deny
+          Principal: "*"
+          Action: "*"
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging-${AWS::Region}
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: AWSLogDeliveryWrite
+          Effect: Allow
+          Principal:
+            Service: delivery.logs.amazonaws.com
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging-${AWS::Region}/*
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Sid: AWSLogDeliveryAclCheck
+          Effect: Allow
+          Principal:
+            Service: delivery.logs.amazonaws.com
+          Action: s3:GetBucketAcl
+          Resource: !Sub arn:aws:s3:::${AWS::AccountId}-logging-${AWS::Region}
+
+
+Outputs:
+  LoggingBucketArn:
+    Condition: USEASTRegion
+    Description: Bucket for logs
+    Value: !GetAtt LoggingBucket.Arn
+    Export:
+      Name:
+        !Sub "${ManagedResourcePrefix}-LoggingBucketArn"
+
+  S3LoggingBucketArn:
+    Description: Bucket for logs
+    Value: !GetAtt S3LoggingBucket.Arn
+    Export:
+      Name:
+        !Sub "${ManagedResourcePrefix}-S3LoggingBucketArn"

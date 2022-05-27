@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "ReadOnlyAccess Role."
+Resources:
+  ReadOnlyRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "central-managed-ReadOnlyAccess"
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              AWS: 
+                - '059516066038'
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+
+Outputs:
+  RoleName:
+    Description: "ReadOnlyRole Name"
+    Value: !Ref ReadOnlyRole
+    Export:
+      Name: "central-managed-ReadOnlyAccessName"
+
+  RoleArn:
+    Description: "ReadOnlyRole Arn"
+    Value: !GetAtt ReadOnlyRole.Arn
+    Export:
+      Name: "central-managed-ReadOnlyAccessArn"

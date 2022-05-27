@@ -1,0 +1,76 @@
+{
+    "builders": [
+        {
+        "type": "amazon-ebs",
+        "region": "eu-central-1",
+        "ami_name": "hardened-Ami",
+        "source_ami": "ami-0bad4a5e987bdebde",
+        "instance_type": "t2.micro",
+        "ssh_username": "ec2-user",
+        "security_group_ids": ["sg-006f8cc5695538050"]
+       }
+    ],
+    "provisioners":[
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/boot.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 boot.sh","sudo mv ./boot.sh /home"]
+    
+            },
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/boot.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 boot.sh","sudo cp -r boot.sh /bin/"]
+    
+            },
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/tenent.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 /home/ec2-user/tenent.sh"]
+
+            },
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/label.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 /home/ec2-user/label.sh","sudo /home/ec2-user/label.sh"]
+
+            },
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/install.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 /home/ec2-user/install.sh","sudo /home/ec2-user/install.sh"]
+
+            },
+            {
+                "type":           "file",
+                "source":         "/home/ec2-user/script.sh",
+                "destination":    "/home/ec2-user/"
+            },
+            {
+                    "type":     "shell",
+                    "inline":   ["chmod 777 /home/ec2-user/script.sh","sudo /home/ec2-user/script.sh"]
+            }
+            
+        
+        ]
+}

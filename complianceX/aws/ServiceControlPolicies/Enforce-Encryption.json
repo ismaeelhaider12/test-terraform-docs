@@ -1,0 +1,79 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DenyUnEncryptedEFS",
+            "Effect": "Deny",
+            "Action": "elasticfilesystem:CreateFileSystem",
+            "Condition": {
+                "Bool": {
+                    "elasticfilesystem:Encrypted": "false"
+                }
+            },
+            "Resource": "*"
+        },
+        {
+            "Sid": "DenyUnEncryptedEBS",
+            "Effect": "Deny",
+            "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateVolume",
+                "ec2:UpdateVolume"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:volume/*"
+            ],
+            "Condition": {
+                "Bool": {
+                    "ec2:Encrypted": false
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedRDS",
+            "Effect": "Deny",
+            "Action": [
+                "rds:CreateDBInstance"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "ForAnyValue:StringEquals": {
+                    "rds:DatabaseEngine": [
+                        "mariadb",
+                        "mysql",
+                        "oracle-ee",
+                        "oracle-se2",
+                        "oracle-se1",
+                        "oracle-se",
+                        "postgres",
+                        "sqlserver-ee",
+                        "sqlserver-se",
+                        "sqlserver-ex",
+                        "sqlserver-web"
+                    ]
+                },
+                "Bool": {
+                    "rds:StorageEncrypted": "false"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedAurora",
+            "Effect": "Deny",
+            "Action": [
+                "rds:CreateDBCluster"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "Bool": {
+                    "rds:StorageEncrypted": "false"
+                }
+            }
+        }
+    ]
+}

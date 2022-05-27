@@ -1,0 +1,23 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - REPOSITORY_URI=$REPOSITORY_URI
+      - echo $REPOSITORY_URI 
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-6)
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+  build:
+    commands:
+      - docker build -t image:latest .
+      - docker tag image:latest $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - ImageToDeploy="$REPOSITORY_URI:$IMAGE_TAG"
+      - echo $ImageToDeploy >> ImageFile
+      - cat ImageFile
+artifacts:
+  files:
+    - '**/*'
+    

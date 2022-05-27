@@ -1,0 +1,63 @@
+variable "TAGS" {}
+
+variable "TABLE_NAME" {}
+
+variable "BILLING_MODE" {}
+
+variable "AUTOSCALE_MIN_READ_CAPACITY" {}
+
+variable "AUTOSCALE_MIN_WRITE_CAPACITY" {}
+
+variable "HASH_KEY" {}
+
+variable "RANGE_KEY" {}
+
+variable "REPLICAS" {}
+
+variable "ENABLE_STREAMS" {}
+
+variable "ENABLE_ENCRYPTION" {}
+
+variable "SERVER_SIDE_ENCRYPTION_KMS_KEY_ARN" {}
+
+variable "ENABLE_POINT_IN_TIME_RECOVERY" {}
+
+variable "GLOBAL_SECONDARY_INDEX_MAP" {}
+
+variable "LOCAL_SECONDARY_INDEX_MAP" {}
+
+variable "TTL_ENABLED" {}
+
+variable "TTL_ATTRIBUTE" {}
+
+variable "COMMON_TAGS" {}
+
+variable "STREAM_VIEW_TYPE" {}
+
+variable "RANGE_KEY_TYPE" {}
+
+variable "HASH_KEY_TYPE" {}
+
+variable "DYNAMODB_ATTRIBUTES" {}
+
+variable "TABLE_AUTOSCALING_ENABLED" {}
+
+variable "AUTOSCALE_MAX_READ_CAPACITY" {}
+
+variable "AUTOSCALE_MAX_READ_CAPACITY_INDEX" {}
+
+variable "AUTOSCALE_MIN_READ_CAPACITY_INDEX" {}
+
+variable "AUTOSCALE_READ_TARGET" {}
+
+variable "AUTOSCALE_READ_TARGET_INDEX" {}
+
+variable "AUTOSCALE_MAX_WRITE_CAPACITY" {}
+
+variable "AUTOSCALE_MAX_WRITE_CAPACITY_INDEX" {}
+
+variable "AUTOSCALE_MIN_WRITE_CAPACITY_INDEX" {}
+
+variable "AUTOSCALE_WRITE_TARGET" {}
+
+variable "AUTOSCALE_WRITE_TARGET_INDEX" {}

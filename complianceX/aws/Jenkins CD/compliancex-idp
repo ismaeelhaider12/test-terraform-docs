@@ -1,0 +1,69 @@
+pipeline {
+agent any
+environment {
+AWS_ACCOUNT_ID="059516066038"
+AWS_DEFAULT_REGION="us-east-1"
+IMAGE_REPO_NAME="compliancex-idp"
+IMAGE_TAG="${BUILD_NUMBER}"
+GITHUB_URL='https://github.com/scaleops/compliancex-idp.git'
+GITHUB_CRED_ID='GithubCreds'
+REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+
+AWS_ECS_SERVICE = 'central-managed-idp-server-service'
+AWS_ECS_TASK_DEFINITION = 'central-managed_idp_server'
+AWS_ECS_COMPATIBILITY = 'FARGATE'
+AWS_ECS_NETWORK_MODE = 'awsvpc'
+AWS_ECS_CPU = '512'
+AWS_ECS_MEMORY = '1024'
+AWS_ECS_CLUSTER = 'central-managed-idp-server'
+AWS_ECS_TASK_DEFINITION_PATH = './ecs/container-definition-update-image.json'
+    
+}
+
+stages {
+
+stage('Logging into AWS ECR') {
+steps {
+script {
+sh "\$(aws ecr get-login --region ${AWS_DEFAULT_REGION} --no-include-email)"
+}
+
+}
+}
+
+stage('Cloning Git') {
+steps {
+checkout([$class: 'GitSCM', branches: [[name: '*/dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${GITHUB_CRED_ID}", url: "${GITHUB_URL}"]]])
+}
+}
+
+// Building Docker images
+stage('Building image') {
+steps{
+script {
+dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
+}
+}
+}
+
+// Uploading Docker images into AWS ECR
+stage('Pushing to ECR') {
+steps{
+script {
+sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:$IMAGE_TAG"
+sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG}"
+sh "docker rmi ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG}"
+}
+}
+}
+
+stage('Deploy in ECS') {
+  steps {
+        script {
+                sh "echo $IMAGE_TAG"
+                sh " ecs-deploy -n ${AWS_ECS_SERVICE} -c ${AWS_ECS_CLUSTER} -i ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG} --timeout 600"
+          }
+    }
+  }
+}
+}

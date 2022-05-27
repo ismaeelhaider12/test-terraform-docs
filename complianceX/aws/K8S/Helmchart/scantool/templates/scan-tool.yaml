@@ -1,0 +1,61 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: scantool
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: scantool
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+            command: ["/bin/sh","-c"]
+            args: ["python manage.py startscan"]
+            env:  
+            - name: DATABASE_NAME
+              value: "compliancexdb"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: DATABASE_PASSWORD
+            - name: MONGO_USER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: MONGO_USER_NAME
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: MONGO_PASSWORD
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: RABBITMQ_USERNAME
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: compliance-secrets
+                  key: RABBITMQ_PASSWORD
+            - name: DATABASE_HOST 
+              value: "172.30.3.103"
+            - name: NO_SQL_DATABASE_NAME 
+              value: "compliancexdb"
+            - name: RABBITMQ_HOST
+              value: "172.30.3.103"
+            - name: NO_SQL_HOST
+              value: "172.30.3.103"
+            - name: SERVICE_DESK_URL
+              value: "http://ticketingsystem-web:8018/"
+            - name: TICKETING_USER_TOKEN
+              value: "4185d705b9f804ecbc03e068d289075609accf86"
+          restartPolicy: OnFailure

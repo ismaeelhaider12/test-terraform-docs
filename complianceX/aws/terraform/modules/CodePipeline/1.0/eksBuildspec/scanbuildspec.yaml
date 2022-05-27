@@ -1,0 +1,69 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - cat ImageFile
+      - ImageToDeploy=$(head -1 ImageFile)
+      - echo $ImageToDeploy
+      - image=$(echo $ImageToDeploy | sed 's/.*\///' | sed 's/:.*//')
+      - tag=$(echo $ImageToDeploy | sed 's/.*\///' | sed 's/.*://')
+      - echo $image $tag
+  build:
+    commands:
+      - SUB='dkr.ecr'
+      - if grep -q "$SUB" <<< "$ImageToDeploy"; then echo "image is from ecr"; else aws codebuild stop-build --id $CODEBUILD_BUILD_ID; fi
+      - i=1
+      - status=1
+      - |-
+          while [ $i -le 1 ]
+          do
+            aws ecr start-image-scan --repository-name $image --image-id imageTag=$tag
+            aws ecr wait image-scan-complete --repository-name $image --image-id imageTag=$tag
+            if [ $(echo $?) -eq 0 ]; then
+                SCAN_FINDINGS=$(aws ecr describe-image-scan-findings --repository-name $image --image-id imageTag=$tag | jq '.imageScanFindings.findingSeverityCounts')
+                CRITICAL=$(echo $SCAN_FINDINGS | jq '.CRITICAL')
+                HIGH=$(echo $SCAN_FINDINGS | jq '.HIGH')
+                MEDIUM=$(echo $SCAN_FINDINGS | jq '.MEDIUM')
+                LOW=$(echo $SCAN_FINDINGS | jq '.LOW')
+                INFORMATIONAL=$(echo $SCAN_FINDINGS | jq '.INFORMATIONAL')
+                UNDEFINED=$(echo $SCAN_FINDINGS | jq '.UNDEFINED')
+                if [ $CRITICAL != null ] ; then
+                  echo Docker image contains vulnerabilities at CRITICAL or HIGH level
+                  aws ecr batch-delete-image --repository-name $image --image-ids imageTag=$tag
+                  echo Image in Repo $image with tag $tag is deleted
+                  aws codebuild stop-build --id $CODEBUILD_BUILD_ID
+                  status=0
+                  echo build will get failed now
+                fi
+            fi
+            ((i++))
+          done
+      - |-
+          if [ $status == 1 ]; then
+            cp -rf * / 
+            cd /
+            cd CodePipeLine
+            aws eks update-kubeconfig  --region $AWS_REGION  --name $CLUSTER_NAME
+            OUTPUT=$(python3 main.py | tail -1)
+            if [ "$OUTPUT" == 0 ]; then
+              echo "Failed & Stop"
+              aws codebuild stop-build --id $CODEBUILD_BUILD_ID
+            fi 
+            if [ "$OUTPUT" == 1 ]; then
+              echo "Deployments"
+              curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl && openssl sha1 -sha256 kubectl && chmod +x ./kubectl && mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+              sed -i "s|IMAGE_URI|$ImageToDeploy|g" ./Deployments/*
+              kubectl apply -f Deployments/
+              echo "------------------- creating LoadBalancer"
+              /bin/sleep 10
+              kubectl get ingress/2048-ingress
+            fi 
+            if [ "$OUTPUT" == 2 ]; then
+              echo "Helm"
+              helm upgrade $HELM_NAME ../Helm --install --set=image.name=$image --set image.tag=$tag
+            fi
+          fi
+artifacts:
+  files:
+    - '**/*'
