@@ -1,0 +1,383 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EventBridge Rules 
+
+Parameters:
+  SqsArn:
+    Type: 'String'
+    Description: 'Control Account SQS ARN'
+  ControlAccount:
+    Type: 'String'
+    Description: 'ControlAccountID' 
+  ManagedResourcePrefix:
+    Type: 'String'
+    Description: 'Prefix for the managed resources'
+
+Conditions:
+  ControlAccountTrue: !Equals
+    - !Ref ControlAccount
+    - !Sub '${AWS::AccountId}'
+  ControlAccountFalse: 
+    !Not [Condition: ControlAccountTrue]
+  IAMRule: !And
+    - !Equals ["us-east-1", !Sub '${AWS::Region}']
+    - !Condition ControlAccountFalse
+
+Resources:
+  CrossEventsRule:
+    Type: 'AWS::Events::Rule'
+    Condition: IAMRule
+    Properties:
+      Description: EventBridge Rule for IAM Policy create and update
+      Name: !Sub "${ManagedResourcePrefix}-IAM-Policy"
+      EventPattern: { "source": ["aws.iam"], "detail-type": ["AWS API Call via CloudTrail"], "detail": { "eventSource": ["iam.amazonaws.com"], "eventName": ["DeletePolicy", "DeletePolicyVersion", "AttachRolePolicy", "AttachUserPolicy", "DetachUserPolicy", "AttachGroupPolicy", "DetachGroupPolicy", "DetachRolePolicy", "PutUserPolicy", "PutRolePolicy", "PutGroupPolicy", "DeleteUserPolicy", "DeleteGroupPolicy", "DeleteRolePolicy", "CreatePolicy", "CreatePolicyVersion"]}}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleECS:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for ECS Policy Ingress
+      Name: !Sub "${ManagedResourcePrefix}-ECS"
+      EventPattern: {  "source": ["aws.ecs"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ecs.amazonaws.com"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleEKS:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for EKS Policy Ingress
+      Name: !Sub "${ManagedResourcePrefix}-EKS"
+      EventPattern: {  "source": ["aws.eks"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["eks.amazonaws.com"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleSG:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for SG Policy Ingress
+      Name: !Sub "${ManagedResourcePrefix}-SG-Ingress"
+      EventPattern: { "source": ["aws.ec2"], "detail-type": ["AWS API Call via CloudTrail"], "detail": { "eventSource": ["ec2.amazonaws.com"], "eventName": ["ModifySecurityGroupRules", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress", "CreateSecurityGroup", "DeleteSecurityGroup", "AuthorizeSecurityGroupIngress"]}}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleConfig:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Config
+      Name: !Sub "${ManagedResourcePrefix}-Config"
+      EventPattern: { "source": ["aws.config"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["config.amazonaws.com"],    "eventName": ["StopConfigurationRecorder", "DeleteDeliveryChannel", "PutDeliveryChannel", "PutConfigurationRecorder"] }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleRDS:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for RDS
+      Name: !Sub "${ManagedResourcePrefix}-RDS"
+      EventPattern: {  "source": ["aws.rds"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["rds.amazonaws.com"],    "eventName": ["CreateDBInstance", "ModifyDBInstance", "AuthorizeDBSecurityGroupIngress", "CreateDBCluster", "CreateDBClusterParameterGroup", "CreateDBClusterSnapshot", "CreateDBInstanceReadReplica", "CreateDBParameterGroup", "CreateDBSecurityGroup", "CreateDBSnapshot", "CreateDBSnapshot", "CreateOptionGroup", "ModifyDBCluster", "ModifyDBClusterParameterGroup", "ModifyDBClusterParameterGroup", "ModifyDBParameterGroup", "ModifyDBSnapshotAttribute", "ModifyDBSubnetGroup", "ModifyOptionGroup", "RevokeDBSecurityGroupIngress", "RestoreDBClusterToPointInTime"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleElastiCache:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for ElastiCache
+      Name: !Sub "${ManagedResourcePrefix}-ElastiCache"
+      EventPattern: {  "source": ["aws.elasticache"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["elasticache.amazonaws.com"],    "eventName": ["AuthorizeCacheSecurityGroupIngress", "CreateCacheCluster", "CreateCacheParameterGroup", "CreateCacheSecurityGroup", "CreateCacheSubnetGroup", "CreateGlobalReplicationGroup", "CreateReplicationGroup", "CreateSnapshot", "ModifyCacheCluster", "ModifyCacheParameterGroup", "ModifyCacheSubnetGroup", "ModifyGlobalReplicationGroup", "ModifyReplicationGroup", "ModifyReplicationGroupShardConfiguration", "ModifyUser", "ModifyUserGroup", "RevokeCacheSecurityGroupIngress"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+
+  CrossEventsRuleConsoleSignin:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Console signin without mfa
+      Name: !Sub "${ManagedResourcePrefix}-ConsoleSignin"
+      EventPattern: {  "detail-type": ["AWS Console Sign In via CloudTrail"]}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+
+  CrossEventsRuleS3BucketPolicy:
+    Type: 'AWS::Events::Rule'
+    Condition: IAMRule
+    Properties:
+      Description: EventBridge Rule for S3 bucket policy
+      Name: !Sub "${ManagedResourcePrefix}-S3BucketPolicy"
+      EventPattern: {  "source": ["aws.s3"],  "detail-type": ["AWS API Call via CloudTrail"], "detail": {    "eventSource": ["s3.amazonaws.com"],    "eventName": ["DeleteBucketCors", "CreateBucket", "DeleteBucketLifecycle", "DeleteBucketPolicy", "PutBucketAcl", "PutBucketCors", "PutBucketLifecycle", "PutBucketPolicy", "PutBucketReplication", "DeleteBucketReplication", "PutBucketEncryption", "DeleteBucketEncryption"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleCloudTrail:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for CloudTrail
+      Name: !Sub "${ManagedResourcePrefix}-CloudTrail"
+      EventPattern: {  "source": ["aws.cloudtrail"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["cloudtrail.amazonaws.com"],    "eventName": ["CreateTrail", "UpdateTrail", "DeleteTrail", "StartLogging", "StopLogging"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleVPCChanges:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for VPC changes
+      Name: !Sub "${ManagedResourcePrefix}-VPCChanges"
+      EventPattern: {  "source": ["aws.ec2"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ec2.amazonaws.com"],    "eventName": ["CreateVpc", "DeleteVpc", "ModifyVpcAttribute", "AcceptVpcPeeringConnection", "CreateVpcPeeringConnection", "DeleteVpcPeeringConnection", "RejectVpcPeeringConnection", "AttachClassicLinkVpc", "DetachClassicLinkVpc", "DisableVpcClassicLink", "EnableVpcClassicLink"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleEC2Changes:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for EC2 changes
+      Name: !Sub "${ManagedResourcePrefix}-EC2Changes"
+      EventPattern: {  "source": ["aws.ec2"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ec2.amazonaws.com"],    "eventName": ["CreateInstances", "UpdateInstances", "StopInstances", "StartInstances", "RebootInstances", "HibernateInstances"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleLoadBalancerChanges:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for LoadBalancer changes
+      Name: !Sub "${ManagedResourcePrefix}-LoadBalancerChanges"
+      EventPattern: {  "source": ["aws.elasticloadbalancing"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["elasticloadbalancing.amazonaws.com"],    "eventName": ["SetSecurityGroups", "RegisterTargets", "ModifyTargetGroupAttributes", "ModifyTargetGroup", "ModifyRule", "ModifyLoadBalancerAttributes", "ModifyListener", "CreateTargetGroup", "CreateRule", "CreateLoadBalancer", "CreateListener", "ApplySecurityGroupsToLoadBalancer"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleKMS:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for KMS changes
+      Name: !Sub "${ManagedResourcePrefix}-KMS"
+      EventPattern: {  "source": ["aws.kms"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["kms.amazonaws.com"],    "eventName": ["CancelKeyDeletion", "CreateAlias", "CreateGrant", "CreateKey", "EnableKey", "EnableKeyRotation", "Encrypt", "RotateKey", "UpdateAlias", "DisableKey", "ScheduleKeyDeletion", "DisableKeyRotation"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleACL:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for network ACL
+      Name: !Sub "${ManagedResourcePrefix}-ACL"
+      EventPattern: {  "source": ["aws.ec2"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ec2.amazonaws.com"],    "eventName": ["CreateNetworkAcl", "CreateNetworkAclEntry", "DeleteNetworkAcl", "DeleteNetworkAclEntry", "ReplaceNetworkAclEntry", "ReplaceNetworkAclAssociation"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleNetworkGateway:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Network Gateway
+      Name: !Sub "${ManagedResourcePrefix}-NetworkGateway"
+      EventPattern: {  "source": ["aws.ec2"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ec2.amazonaws.com"],    "eventName": ["CreateCustomerGateway", "DeleteCustomerGateway", "AttachInternetGateway", "CreateInternetGateway", "DeleteInternetGateway", "DetachInternetGateway"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleRouteTable:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Route table
+      Name: !Sub "${ManagedResourcePrefix}-RouteTable"
+      EventPattern: {  "source": ["aws.ec2"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["ec2.amazonaws.com"],    "eventName": ["CreateRoute", "CreateRouteTable", "ReplaceRoute", "ReplaceRouteTableAssociation", "DeleteRouteTable", "DeleteRoute", "DisassociateRouteTable"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+
+  CrossEventsRuleUnAuthorized:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for UnAuthorized operations
+      Name: !Sub "${ManagedResourcePrefix}-UnAuthorized"
+      EventPattern: { "source": ["*"], "detail-type": ["AWS API Call via CloudTrail"], "detail": { "eventSource": ["*"], "eventName": ["UnauthorizedOperation", "AccessDenied"]}}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleRootAccount:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for RootAccount operations
+      Name: !Sub "${ManagedResourcePrefix}-RootAccount"
+      EventPattern: { "source": ["*"], "detail-type": ["AWS API Call via CloudTrail"], "detail": { "eventSource": ["*"], "userIdentity": {"arn": ["root"]}}}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  CrossEventsRuleKinesis:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Kinesis
+      Name: !Sub "${ManagedResourcePrefix}-Kinesis"
+      EventPattern: {  "source": ["aws.kinesis"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["kinesis.amazonaws.com"],    "eventName": ["CreateStream", "EnableEnhancedMonitoring", "IncreaseStreamRetentionPeriod", "RegisterStreamConsumer", "SplitShard", "StartStreamEncryption", "StopStreamEncryption", "UpdateShardCount", "CreateDeliveryStream", "StartDeliveryStreamEncryption", "StopDeliveryStreamEncryption", "UpdateDestination"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+          
+  CrossEventsRuleACM:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for ACM
+      Name: !Sub "${ManagedResourcePrefix}-ACM"
+      EventPattern: {  "source": ["aws.acm"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["acm.amazonaws.com"],    "eventName": ["RequestCertificate", "ResendValidationEmail"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"          
+
+
+  CrossEventsRuleEFS:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for EFS
+      Name: !Sub "${ManagedResourcePrefix}-EFS"
+      EventPattern: {  "source": ["aws.elasticfilesystem"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["elasticfilesystem.amazonaws.com"],    "eventName": ["CreateFileSystem", "ModifyFileSystem", "CreateMountTarget", "ModifyMountTargetSecurityGroups"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"          
+
+
+  CrossEventsRuleEventBridge:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for EventBridge
+      Name: !Sub "${ManagedResourcePrefix}-EventBridge"
+      EventPattern: {  "source": ["aws.events"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["events.amazonaws.com"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+
+  CrossEventsRuleRedshift:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Redshift
+      Name: !Sub "${ManagedResourcePrefix}-Redshift"
+      EventPattern: {  "source": ["aws.redshift"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["redshift.amazonaws.com"],    "eventName": [CreateCluster", "CreateClusterSecurityGroup", "CreateClusterSubnetGroup", "ModifyCluster", "ModifyClusterIamRoles", "ModifyClusterMaintenance", "ModifyClusterSubnetGroup", "AuthorizeClusterSecurityGroupIngress", "RevokeClusterSecurityGroupIngress"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"          
+
+  CrossEventsRuleLambda:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for Lambda
+      Name: !Sub "${ManagedResourcePrefix}-Lambda"
+      EventPattern: {  "source": ["aws.lambda"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["lambda.amazonaws.com"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"          
+
+  CrossEventsRuleCloudFront:
+    Type: 'AWS::Events::Rule'
+    Condition: ControlAccountFalse
+    Properties:
+      Description: EventBridge Rule for CloudFront
+      Name: !Sub "${ManagedResourcePrefix}-CloudFront"
+      EventPattern: {  "source": ["aws.cloudfront"],  "detail-type": ["AWS API Call via CloudTrail"],  "detail": {    "eventSource": ["cloudfront.amazonaws.com"]  }}
+      State: ENABLED
+      Targets: 
+        - Arn: !Ref SNSTopic
+          Id: "SendEventsToSNS"
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Condition: ControlAccountFalse
+    Properties:
+      Subscription:
+        - Endpoint: !Ref SqsArn
+          Protocol: "sqs"
+      TopicName: !Sub "${ManagedResourcePrefix}-eventBridgeFindings-Topic"
+
+  EventTopicPolicy:
+    Condition: ControlAccountFalse
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: CrossSQS
+            Effect: Allow
+            Principal:
+              AWS: !Ref ControlAccount
+            Action: 'sns:Subscribe'
+            Resource: !Ref SNSTopic
+          - Sid: AllowServices
+            Effect: Allow
+            Sid: AllowServices          
+            Principal:
+              AWS: "*"
+            Action: 
+              - "SNS:GetTopicAttributes"
+              - "SNS:SetTopicAttributes"
+              - "SNS:AddPermission"
+              - "SNS:RemovePermission"
+              - "SNS:DeleteTopic"
+              - "SNS:Subscribe"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"              
+            Resource: !Ref SNSTopic
+      Topics:
+        - !Ref SNSTopic

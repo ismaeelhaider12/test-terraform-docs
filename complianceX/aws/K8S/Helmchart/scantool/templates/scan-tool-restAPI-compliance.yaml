@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: scantool-restapi-compliance
+spec:
+  selector:
+    app: scantool-restapi-compliance
+  ports:
+    - protocol: TCP
+      port: 8017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scantool-restapi-compliance
+spec:
+  selector:
+    matchLabels:
+      app: scantool-restapi-compliance
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: scantool-restapi-compliance
+    spec:
+      containers:
+      - name: scantool-restapi-compliance
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+        env:  
+        - name: DATABASE_NAME
+          value: "compliancexdb"
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_PASSWORD
+        - name: MONGO_USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_USER_NAME
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_PASSWORD
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_PASSWORD
+        - name: DATABASE_HOST 
+          value: "172.30.3.103"
+        - name: NO_SQL_DATABASE_NAME 
+          value: "compliancexdb"
+        - name: RABBITMQ_HOST
+          value: "172.30.3.103"
+        - name: NO_SQL_HOST
+          value: "172.30.3.103"
+        - name: SERVICE_DESK_URL
+          value: "http://ticketingsystem-web:8018/"
+        - name: TICKETING_USER_TOKEN
+          value: "4185d705b9f804ecbc03e068d289075609accf86"
+        command: ["/bin/sh","-c"]
+        args: ["python manage.py runserver 0.0.0.0:8017"]

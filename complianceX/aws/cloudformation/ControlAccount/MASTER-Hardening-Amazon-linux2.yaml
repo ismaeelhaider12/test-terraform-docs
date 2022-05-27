@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: 2010-09-09
+​
+​
+Parameters:
+  ManagedResourcePrefix:
+    Type: String
+    Description: Provide Prefix for the managed resources
+  UserName:
+    Type: String
+    Description: Provide User Name of Git Repo
+  RepoName:
+    Type: String
+    Description: Provide repo Name in Users Git account
+  BranchName:
+    Type: String
+    Description: Provide branch name having buildspec.yaml on root
+  Token:
+    Type: String
+    Description: Provide auth Token for Repo
+​
+Resources:
+​
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "${ManagedResourcePrefix}-${AWS::AccountId}-hardening-bucket"
+​
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    DependsOn: ArtifactBucket
+    Properties:
+      RoleName: !Sub "${ManagedResourcePrefix}-hardening-PipeLine-Role"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref CodePipelineManagedPolicy
+​
+  CodePipelineManagedPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    DependsOn: ArtifactBucket
+    Properties: 
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-hardening-Pipeline-policy"
+      Description: Policy To Allow Code-Build to Access Required Resources
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+          - Resource: "*"
+            Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+          - Resource:
+              - !Sub arn:aws:s3:::${ArtifactBucket}
+              - !Sub arn:aws:s3:::${ArtifactBucket}/*
+            Effect: Allow
+            Action:
+              - "s3:Put*"
+              - "s3:Get*"
+​
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ManagedResourcePrefix}-hardening-codebuild-Role"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref CodeBuildManagedPolicy
+​
+  CodeBuildManagedPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    DependsOn: ArtifactBucket
+    Properties: 
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-hardening-policy"
+      Description: Policy To Allow Code-Build to Access Required Resources
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "ec2:Describe*"
+              - "ec2:CreateSecurityGroup"
+              - "ec2:AuthorizeSecurityGroupIngress"
+              - "ec2:CreateKeyPair"
+              - "ec2:Delete*"
+              - "ec2:StopInstances"
+              - "ec2:DescribeImage*"
+              - "ec2:CopyImage"
+              - "ec2:CreateImage"
+              - "ec2:RegisterImage"
+              - "ec2:RunInstances"
+              - "ec2:StartInstances"
+              - "ec2:TerminateInstances"
+              - "ec2:CreateVolume"
+              - "ec2:CreateTags"
+            Resource: "*"
+          - Resource:
+              - !Sub arn:aws:s3:::${ArtifactBucket}
+              - !Sub arn:aws:s3:::${ArtifactBucket}/*
+            Effect: Allow
+            Action:
+              - "s3:Put*"
+              - "s3:Get*"
+​
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Source:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:3.0
+        Type: LINUX_CONTAINER
+      Name: !Sub "${ManagedResourcePrefix}-CodeBuild-Project"
+      ServiceRole: !Ref CodeBuildServiceRole
+​
+​
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ManagedResourcePrefix}-Hardening-Pipeline"
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStores:
+        - ArtifactStore:
+            Type: S3
+            Location: !Ref ArtifactBucket
+          Region: !Ref AWS::Region
+      RestartExecutionOnUpdate: true
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configuration:
+                Owner: !Ref UserName
+                Repo:  !Ref RepoName
+                Branch: !Ref BranchName
+                OAuthToken: !Ref Token
+              OutputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 1

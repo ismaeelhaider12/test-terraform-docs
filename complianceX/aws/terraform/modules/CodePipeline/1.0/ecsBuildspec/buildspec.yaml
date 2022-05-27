@@ -1,0 +1,46 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - yum install jq -y
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+  build:
+    commands:
+      - cat imagedefinition.json
+      - Image=$(jq --raw-output .[].imageUri imagedefinition.json | sed 's/.*\///' | sed 's/:.*//')
+      - Tag=$(jq --raw-output .[].imageUri imagedefinition.json | sed 's/.*\///' | sed 's/.*://')
+      - echo $Image $Tag
+      - imagedefinition=$(cat imagedefinition.json)
+      - echo $imagedefinition
+      - SUB='dkr.ecr'
+      - if grep -q "$SUB" <<< "$imagedefinition"; then echo "image is from ecr"; else aws codebuild stop-build --id $CODEBUILD_BUILD_ID; fi
+      - i=1
+      - |-
+          while [ $i -le 1 ]
+          do
+            aws ecr start-image-scan --repository-name $Image --image-id imageTag=$Tag
+            aws ecr wait image-scan-complete --repository-name $Image --image-id imageTag=$Tag
+            #ws ecr describe-image-scan-findings --repository-name $Image --image-id imageTag=$Tag
+            if [ $(echo $?) -eq 0 ]; then
+                SCAN_FINDINGS=$(aws ecr describe-image-scan-findings --repository-name $Image --image-id imageTag=$Tag | jq '.imageScanFindings.findingSeverityCounts')
+                CRITICAL=$(echo $SCAN_FINDINGS | jq '.CRITICAL')
+                HIGH=$(echo $SCAN_FINDINGS | jq '.HIGH')
+                MEDIUM=$(echo $SCAN_FINDINGS | jq '.MEDIUM')
+                LOW=$(echo $SCAN_FINDINGS | jq '.LOW')
+                INFORMATIONAL=$(echo $SCAN_FINDINGS | jq '.INFORMATIONAL')
+                UNDEFINED=$(echo $SCAN_FINDINGS | jq '.UNDEFINED')
+                if [ $CRITICAL != null ] || [ $HIGH != null ]; then
+                  echo Docker image contains vulnerabilities at CRITICAL or HIGH level
+                  aws ecr batch-delete-image --repository-name $Image --image-ids imageTag=$Tag
+                  echo Image in Repo $Image with tag $Tag is deleted
+                  echo build will be stoped and will be marked as failed 
+                  status=1
+                  aws codebuild stop-build --id $CODEBUILD_BUILD_ID
+                fi
+            fi
+            ((i++))
+          done
+artifacts:
+  files:
+    - '**/*'

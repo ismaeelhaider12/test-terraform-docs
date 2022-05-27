@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: provisioningtool-web
+spec:
+  type: NodePort
+  selector:
+    app: provisioningtool-web
+  ports:
+    - protocol: TCP
+      port: 8005
+      targetPort: 8005
+      nodePort: 30510
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisioningtool-web
+spec:
+  selector:
+    matchLabels:
+      app: provisioningtool-web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: provisioningtool-web
+    spec:
+      containers:
+      - name: provisioningtool-web
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+        ports:
+        - containerPort: 8005
+        env:  
+        - name: COMPLIANCEX_COMPLIANCE_END_POINT
+          value: "http://scantool-restapi:8015"
+        - name: TERRAFORM_TEMPLATE_BUCKET
+          value: "059516066038-compliancex-terraformtemplates"
+        - name: DATABASE_NAME
+          value: "compliancexdb"
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_PASSWORD
+        - name: MONGO_USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_USER_NAME
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_PASSWORD
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_PASSWORD
+        - name: DATABASE_HOST 
+          value: "172.30.3.103"
+        - name: NO_SQL_ROUTER_NAME
+          value: ""
+        - name: NO_SQL_DATABASE_NAME 
+          value: "compliancexdb"
+        - name: RABBITMQ_HOST
+          value: "172.30.3.103"
+        - name: NO_SQL_HOST
+          value: "172.30.3.103"
+        - name: BUCKET_NAME 
+          value: "059516066038-compliancex"
+        - name: LOCKING_TABLE_NAME 
+          value: "complianceX-locking"
+        - name: BUCKET_REGION 
+          value: "us-east-1"
+        - name: KMS_KEY_ARN 
+          value: "arn:aws:kms:us-east-1:059516066038:key/9b22dee8-68c0-417e-8621-4c140887ec81"
+        - name: ASSUME_ROLE_ARN 
+          value: "central-managed-AdministratorAccess"
+        - name: BUCKET_NAME_TERRAFORM_FILE 
+          value: "059516066038-compliancexclientbucket"
+        - name: IDP_URL
+          value: "https://idp.demo.litmusscale.com"          
+        command: ["/bin/sh","-c"]
+        args: ["python manage.py runserver 0.0.0.0:8005"]

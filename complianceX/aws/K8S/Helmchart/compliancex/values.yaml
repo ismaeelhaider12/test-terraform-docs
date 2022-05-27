@@ -1,0 +1,3 @@
+image:
+  repository: 059516066038.dkr.ecr.us-east-1.amazonaws.com/compliancex
+  tag: latest

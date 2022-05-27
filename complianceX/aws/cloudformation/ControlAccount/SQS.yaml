@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This template will create centralized SQS to get events from cross accounts"
+Parameters:
+  OrgId:
+    Type: 'String'
+    Description: 'SNS topic name'
+  ManagedResourcePrefix:
+    Type: 'String'
+    Description: 'Prefix for the managed resources'
+Resources:
+  LoggingSQS: 
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${ManagedResourcePrefix}-logging-queue
+  SQS: 
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy: 
+        deadLetterTargetArn: 
+          Fn::GetAtt: 
+            - "DeadLetterSQS"
+            - "Arn"
+        maxReceiveCount: 5
+      QueueName: !Sub ${ManagedResourcePrefix}-eventBridgeFindings-SQS
+
+  DeadLetterSQS: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      QueueName: !Sub ${ManagedResourcePrefix}-dead-letter-SQS
+
+  SampleSQSPolicy: 
+    Type: AWS::SQS::QueuePolicy
+    Properties: 
+      Queues: 
+        - !Ref SQS
+      PolicyDocument: 
+        Statement: 
+          - 
+            Action: 
+              - "SQS:*" 
+            Effect: "Allow"
+            Resource: !GetAtt SQS.Arn
+            Principal:  
+              AWS: !Sub "${AWS::AccountId}"     
+          - 
+            Action: 
+              - "SQS:*" 
+            Effect: "Allow"
+            Resource: !GetAtt SQS.Arn
+            Principal:  
+              AWS: "*"
+          - 
+            Action: 
+              - "SQS:SendMessage" 
+            Effect: "Allow"
+            Resource: "*"
+            Condition:
+              ForAllValues:StringEquals:
+                'aws:PrincipalOrgId': !Ref OrgId
+            Principal:
+              AWS: "*"
+
+Outputs:
+  SQSArn:
+    Description: Arn of SQS
+    Value: !GetAtt SQS.Arn
+    Export:
+      Name:
+        !Sub "${ManagedResourcePrefix}-SQSArn"
+  DeadLetterSQSArn:
+    Description: Arn of Dead Letter SQS
+    Value: !GetAtt DeadLetterSQS.Arn
+    Export:
+      Name:
+        !Sub "${ManagedResourcePrefix}-DeadLetterSQSArn"

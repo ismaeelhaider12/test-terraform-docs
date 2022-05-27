@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: compliancex-web
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: '/compliancex/healthcheck'
+spec:
+  selector:
+    app: compliancex-web
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compliancex-web
+spec:
+  selector:
+    matchLabels:
+      app: compliancex-web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: compliancex-web
+    spec:
+      containers:
+      - name: compliancex-web
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+        resources:
+          limits:
+            memory: "2048Mi"
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_NAME
+          value: "compliancexdb"
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_PASSWORD
+        - name: MONGO_USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_USER_NAME
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_PASSWORD
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_PASSWORD
+        - name: DATABASE_HOST 
+          value: "172.30.3.103"
+        - name: NO_SQL_ROUTER_NAME
+          value: ""
+        - name: NO_SQL_DATABASE_NAME 
+          value: "compliancexdb"
+        - name: RABBITMQ_HOST
+          value: "172.30.3.103"
+        - name: NO_SQL_HOST
+          value: "172.30.3.103"
+        - name: EXPORT_LOGS_BUCKET
+          value: "059516066038-export-logs-bucket"
+        - name: APPLICATION_ID
+          value: "1"
+        - name: AWS_APPLICATION_ID
+          value: "2"
+        - name: CLIENT_SECRET
+          value: "43b8c0ae587e7605c0be6cdb2f3f3ca915a0923713f40601ede69d68"
+        - name: CLIENT_ID
+          value: "6je3ehek3imr8ur6t2icckfmf3"
+        - name: CLIENT_DATA_ID
+          value: "1"
+        - name: IDP_URL
+          value: "https://idp.demo.litmusscale.com"
+        - name: REDIRECT_URL
+          value: "https://admin.demo.litmusscale.com/redirect"
+        command: ["/bin/sh","-c"]
+        args: ["python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind :8000 --log-level debug --workers 2 --threads $(( 2 * `cat /proc/cpuinfo | grep 'core id' | wc -l` + 1 )) --timeout 90 coreconfig.wsgi"]

@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticketingsystem-web
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: '/ticketing/healthcheck'
+spec:
+  selector:
+    app: ticketingsystem-web
+  ports:
+    - protocol: TCP
+      port: 8018
+      targetPort: 8018
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticketingsystem-web
+spec:
+  selector:
+    matchLabels:
+      app: ticketingsystem-web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ticketingsystem-web
+    spec:
+      containers:
+      - name: ticketingsystem-web
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag}}"
+        resources:
+          limits:
+            cpu: "800m"
+          requests:
+            cpu: "500m"
+        ports:
+        - containerPort: 8018
+        env:
+        - name: DATABASE_NAME
+          value: "compliancexdb"
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: DATABASE_PASSWORD
+        - name: MONGO_USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_USER_NAME
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: MONGO_PASSWORD
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: compliance-secrets
+              key: RABBITMQ_PASSWORD
+        - name: DATABASE_HOST 
+          value: "172.30.3.103"
+        - name: NO_SQL_ROUTER_NAME
+          value: "mongo_db"
+        - name: NO_SQL_DATABASE_NAME 
+          value: "compliancexdb"
+        - name: RABBITMQ_HOST
+          value: "172.30.3.103"
+        - name: NO_SQL_HOST
+          value: "172.30.3.103"
+        - name: REPORTS_BUCKET
+          value: "059516066038-export-logs-bucket"
+        - name: ATTACHMENT_BUCKET
+          value: "059516066038-compliancex-ticketing-attachment"
+        - name: IDP_URL
+          value: "https://idp.demo.litmusscale.com"          
+        command: ["/bin/sh","-c"]
+        args: ["python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind :8018 --log-level debug --workers $(( 2 * `cat /proc/cpuinfo | grep 'core id' | wc -l` + 1 )) --threads $(( 2 * `cat /proc/cpuinfo | grep 'core id' | wc -l` + 1 )) --timeout 90 ticketing_system.wsgi"]

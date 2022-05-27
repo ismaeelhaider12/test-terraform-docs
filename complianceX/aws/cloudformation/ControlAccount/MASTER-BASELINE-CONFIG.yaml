@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template that creates an Org-level AWS Config Aggregator to collect config rules information
+
+Parameters:
+  ManagedResourcePrefix:
+    Type: 'String'
+    Description: 'Prefix for the managed resources'
+  ManagedResourceTagKey:
+    Type: 'String'
+    Description: 'Tag key for the managed resources'
+  ManagedResourceTagValue:
+    Type: 'String'
+    Description: 'Tag value for the managed resources'
+
+Resources:
+    # AWSConfig Aggregator for Guardrails detection for organizations
+    ConfigAggregatorForOrganizations:
+      Type: AWS::Config::ConfigurationAggregator
+      Properties:
+        OrganizationAggregationSource:
+          RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/ConfigAggregatorRoleForOrganizations
+          AllAwsRegions: true
+        ConfigurationAggregatorName: !Sub ${ManagedResourcePrefix}-ConfigAggregatorForOrganizations
+        Tags:
+          -
+            Key: !Ref ManagedResourceTagKey
+            Value: !Ref ManagedResourceTagValue
+
+Outputs:
+  ConfigAggregatorForOrganizationsArn:
+    Description: Arn of configuration agrigator
+    Value: !Sub "arn:aws:config:${AWS::Region}:${AWS::AccountId}:config-aggregator/${ConfigAggregatorForOrganizations}"
+    Export:
+      Name:
+        !Sub "${ManagedResourcePrefix}-ConfigAggregatorForOrganizationsArn"

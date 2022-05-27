@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Template will create 3 IAM Role's one is for account switching purpose and other are for federation ReadOnlyAccess and AdminAccess."
+Parameters:
+  MainAccount:
+    Type: String
+    MinLength: 12
+    MaxLength: 12
+    Default: "841423564411" # DO NOT CHANGE
+    AllowedPattern: "[0-9]{12}"
+    Description: AWS account serving as main account
+  ControlAccount:
+    Type: String
+    MinLength: 12
+    MaxLength: 12
+    Default: "059516066038" # DO NOT CHANGE
+    AllowedPattern: "[0-9]{12}"
+    Description: AWS account serving as controll account
+  FederationName:
+    Type: 'String'
+    Description: 'FederationName for the Principal'
+  ManagedResourcePrefix:
+    Type: 'String'
+    Description: 'Prefix for the managed resources'
+
+Resources:
+  AdminAccessSwitchRole: 
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${ManagedResourcePrefix}-AdministratorAccess"
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              AWS: 
+                - !Ref MainAccount
+                - !Ref ControlAccount
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+        - !Ref IAMUserDenyPolicy
+        - !Ref FederatedEncryptionPolicy
+
+  FederatedReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ManagedResourcePrefix}-Federated-ReadOnly"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              AWS: 
+                - !Ref MainAccount
+                - !Ref ControlAccount
+            Action: "sts:AssumeRole"
+          - Effect: Allow
+            Action: sts:AssumeRoleWithSAML
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:saml-provider/${FederationName}
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+      Path: '/'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+        - !Ref IAMUserDenyPolicy
+        - !Ref IAMRoleDenyPolicy
+        - !Ref FederatedResourcesDenyPolicy
+        - !Ref FederatedEncryptionPolicy
+
+
+  FederatedAdminAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ManagedResourcePrefix}-Federated-AdminAccess"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              AWS: 
+                - !Ref MainAccount
+                - !Ref ControlAccount
+            Action: "sts:AssumeRole"
+          - Effect: Allow
+            Action: sts:AssumeRoleWithSAML
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:saml-provider/${FederationName}
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+      Path: '/'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+        - !Ref IAMUserDenyPolicy
+        - !Ref IAMRoleDenyPolicy
+        - !Ref FederatedResourcesDenyPolicy
+        - !Ref FederatedEncryptionPolicy
+
+  ####IAM USERS DENY####
+  IAMUserDenyPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties: 
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-IAMUserDenyPolicy"
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - 
+            Effect: "Deny"
+            Action: 
+              - iam:PutUserPermissionsBoundary
+              - iam:DeleteUser
+              - iam:DeleteUserPermissionsBoundary
+              - iam:PutUserPolicy
+              - iam:GetUser
+              - iam:DetachUserPolicy
+              - iam:UpdateUser
+              - iam:GetAccessKeyLastUsed
+              - iam:DeleteUserPolicy
+              - iam:AttachUserPolicy
+              - iam:GetUserPolicy
+              - iam:ListGroupsForUser
+              - iam:CreateUser
+              - iam:AddUserToGroup
+              - iam:RemoveUserFromGroup
+              - iam:ListAttachedUserPolicies
+              - iam:ListUserPolicies
+              - iam:ListUsers
+              - iam:ListUserTags
+              - iam:DeleteUser
+              - iam:CreateUser
+              - iam:UpdateUser
+              - iam:DeleteGroup
+              - iam:DeleteUserPolicy
+              - iam:PutUserPolicy
+              - iam:DetachUserPolicy
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:user/*
+
+  #### IAM Role DENY####
+  IAMRoleDenyPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties: 
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-IAMRoleDenyPolicy"
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - 
+            Effect: "Deny"
+            Action: 
+              - iam:*
+            Resource: 
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/${ManagedResourcePrefix}-Federated-AdminAccess"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/${ManagedResourcePrefix}-Federated-ReadOnly"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/${ManagedResourcePrefix}-AdministratorAccess"              
+              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/${ManagedResourcePrefix}-FederatedEncryptionPolicy"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/${ManagedResourcePrefix}-EBSDefaultencryptionDeny"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/${ManagedResourcePrefix}-FederatedResourcesDenyPolicy"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/${ManagedResourcePrefix}-IAMRoleDenyPolicy"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:policy/${ManagedResourcePrefix}-IAMUserDenyPolicy"
+
+  FederatedResourcesDenyPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties: 
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-FederatedResourcesDenyPolicy"
+      Description: Policy for Deny Effect on all resources of stackSets
+      PolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: "Deny"
+            Action: 
+              - "s3:DeleteBucket"
+              - "cloudtrail:*"
+              - "lambda:*"
+              - "logs:*"
+              - "iam:*"
+              - "SNS:*"
+              - "config:*"
+              - "cloudwatch:*"
+              - "ec2:*"
+              - "sqs:*"
+              - "events:*"
+            Resource:
+              - !Sub arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/central-managed-BaselineCloudTrail
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:central-managed/CloudTrailLogs:*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/central-managed-CloudWatchLogsRole
+              - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/central-managed-ConfigComplianceChangeEventRule
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/central-managed-NotificationForwarder:*
+              - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:central-managed-NotificationForwarder	
+              - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:central-managed-SecurityNotifications	
+              - !Sub arn:aws:sns:*:${AWS::AccountId}:central-managed-eventBridgeFindings-Topic
+              - !Sub arn:aws:config:${AWS::Region}:${AWS::AccountId}:aggregation-authorization/001641974168/*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/central-managed-ForwardSnsNotificationRole	
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/central-managed-ConfigRecorderRole	
+              - !Sub arn:aws:events:*:${AWS::AccountId}:rule/${ManagedResourcePrefix}-*
+              - !Sub arn:aws:cloudwatch:*:${AWS::AccountId}:alarm:${ManagedResourcePrefix}-*
+              - !Sub arn:aws:s3:::${AWS::AccountId}-logging
+              - !Sub arn:aws:s3:::${AWS::AccountId}-logging-*
+
+  FederatedEncryptionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ManagedResourcePrefix}-FederatedEncryptionPolicy"
+      Description: Policy for restrict encryption of storages
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ForAuroraCluster
+          Effect: Deny
+          Action:
+          - rds:CreateDBCluster
+          Resource:
+          - arn:aws:rds:*:*:Cluster:*
+          - arn:aws:rds:*:*:cluster:*
+          Condition:
+            Bool:
+              rds:StorageEncrypted: 'false'
+        - Sid: ForDBinstance
+          Effect: Deny
+          Action:
+          - rds:CreateDBInstance
+          Resource:
+          - arn:aws:rds:*:*:db:*
+          Condition:
+            Bool:
+              rds:StorageEncrypted: 'false'
+
+        - Sid: ForEBSVolumes
+          Effect: Deny
+          Action: 
+          - ec2:CreateVolume
+          Resource: 
+          - arn:aws:ec2:*:*:volume/*
+          Condition:
+            Bool:
+              ec2:Encrypted: 'false'
+
+        - Sid: ForEC2instance
+          Effect: Deny
+          Action: 
+          - ec2:RunInstances
+          Resource: 
+          - "*"
+          Condition:
+            Bool:
+              ec2:Encrypted: 'false'

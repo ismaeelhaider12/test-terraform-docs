@@ -1,0 +1,65 @@
+module "DynamoDB" {
+  providers = {
+    aws = aws.var.REGION
+  }
+  source      = "../../../modules/DynamoDB/1.0"
+  TAGS        = var.TAGS
+  COMMON_TAGS = local.common_tags
+
+
+  ###################################
+  ######### DynamoDB Table
+
+
+  TABLE_NAME                         = var.TABLE_NAME
+  BILLING_MODE                       = var.BILLING_MODE
+  AUTOSCALE_MIN_READ_CAPACITY        = var.AUTOSCALE_MIN_READ_CAPACITY
+  AUTOSCALE_MIN_WRITE_CAPACITY       = var.AUTOSCALE_MIN_WRITE_CAPACITY
+  HASH_KEY                           = var.HASH_KEY
+  RANGE_KEY                          = var.RANGE_KEY
+  REPLICAS                           = var.REPLICAS
+  ENABLE_STREAMS                     = var.ENABLE_STREAMS
+  ENABLE_ENCRYPTION                  = var.ENABLE_ENCRYPTION
+  SERVER_SIDE_ENCRYPTION_KMS_KEY_ARN = var.SERVER_SIDE_ENCRYPTION_KMS_KEY_ARN
+  ENABLE_POINT_IN_TIME_RECOVERY      = var.ENABLE_POINT_IN_TIME_RECOVERY
+  GLOBAL_SECONDARY_INDEX_MAP         = var.GLOBAL_SECONDARY_INDEX_MAP
+  LOCAL_SECONDARY_INDEX_MAP          = var.LOCAL_SECONDARY_INDEX_MAP
+  TTL_ENABLED                        = var.TTL_ENABLED
+  TTL_ATTRIBUTE                      = var.TTL_ATTRIBUTE
+  STREAM_VIEW_TYPE                   = var.STREAM_VIEW_TYPE
+  RANGE_KEY_TYPE                     = var.RANGE_KEY_TYPE
+  HASH_KEY_TYPE                      = var.HASH_KEY_TYPE
+  DYNAMODB_ATTRIBUTES                = var.DYNAMODB_ATTRIBUTES
+
+  ####################################
+  ######## Table AutoSCaling
+
+  TABLE_AUTOSCALING_ENABLED           = var.TABLE_AUTOSCALING_ENABLED
+  AUTOSCALE_MAX_READ_CAPACITY         = var.AUTOSCALE_MAX_READ_CAPACITY
+  AUTOSCALE_MAX_READ_CAPACITY_INDEX   = var.AUTOSCALE_MAX_READ_CAPACITY_INDEX
+  AUTOSCALE_MIN_READ_CAPACITY_INDEX   = var.AUTOSCALE_MIN_READ_CAPACITY_INDEX
+  AUTOSCALE_READ_TARGET               = var.AUTOSCALE_READ_TARGET
+  AUTOSCALE_READ_TARGET_INDEX         = var.AUTOSCALE_READ_TARGET_INDEX
+  AUTOSCALE_MAX_WRITE_CAPACITY        = var.AUTOSCALE_MAX_WRITE_CAPACITY
+  AUTOSCALE_MAX_WRITE_CAPACITY_INDEX  = var.AUTOSCALE_MAX_WRITE_CAPACITY_INDEX
+  AUTOSCALE_MIN_WRITE_CAPACITY_INDEX  = var.AUTOSCALE_MIN_WRITE_CAPACITY_INDEX
+  AUTOSCALE_WRITE_TARGET              = var.AUTOSCALE_WRITE_TARGET
+  AUTOSCALE_WRITE_TARGET_INDEX        = var.AUTOSCALE_WRITE_TARGET_INDEX
+
+}
+
+######################################
+############ OutPuts
+
+output "DYNAMODB_TABLE_ARN" {
+  value = "${module.DynamoDB.DYNAMODB_TABLE_ARN}"
+}
+output "DYNAMODB_TABLE_ID" {
+  value = "${module.DynamoDB.DYNAMODB_TABLE_ID}"
+}
+output "DYNAMODB_TABLE_STREAM_ARN" {
+  value = "${module.DynamoDB.DYNAMODB_TABLE_STREAM_ARN}"
+}
+output "DYNAMODB_TABLE_STREAM_LABEL" {
+  value = "${module.DynamoDB.DYNAMODB_TABLE_STREAM_LABEL}"
+}
