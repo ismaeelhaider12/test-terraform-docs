@@ -14,4 +14,4 @@ jobs:
       with:
         working-dir: complianceX/aws/terraform/PCI
         recursive: true
-        recursive-path: modules
+        recursive-path: .
