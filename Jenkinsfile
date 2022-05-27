@@ -1,7 +1,7 @@
 pipeline {
   agent any  
   stages {
-        
+    tools {terraform "terraform"}
     stage('Git') {
       steps {
         git branch: 'main', url: 'https://github.com/ismaeelhaider12/test-terraform-docs.git'
@@ -13,6 +13,7 @@ pipeline {
          sh "echo hello world ............ "
          sh "ls -la"
          sh "pwd"
+         sh "terraform -version"
       }
     }  
 
