@@ -15,7 +15,7 @@ pipeline {
          sh "echo hello world  ............ "
          sh "ls -la"
          sh "pwd"
-         sh "terraform -version"
+         sh "terraform --version"
       }
     }  
 
