@@ -13,5 +13,4 @@ jobs:
       uses: terraform-docs/gh-actions@main
       with:
         working-dir: complianceX/aws/terraform/PCI
-        recursive: true
-        recursive-path: .
+        config-file: .terraform-docs.yml
