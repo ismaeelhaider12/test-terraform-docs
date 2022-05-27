@@ -1,0 +1,178 @@
+---
+layout: default
+---
+<link rel="icon" href="/assets/images/litmuss-icon-80.png">
+ <style>
+   body {
+    /* display: none; */
+    background-image: url("/assets/images/Comp-2.gif");
+    background-repeat:no-repeat ;
+
+  }
+  
+  /*footer {
+    display: none !important;
+  } */
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  /* background: #f1f1f1; */
+  border-radius: 30px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 30px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.site-header{
+  border-bottom: none;
+}
+
+  .site-footer{
+    display: none;
+  }
+
+blockquote > p {
+  background: #f9f9f9;
+  border-left: 5px solid #0c213a;
+  /* margin: 1.5em 10px; */
+  padding: 1em 10px;
+}
+.side-bar{
+  min-width: 250px;
+  max-width: 250px;
+  background-color: #0c213a;
+
+}
+.nav-list-link{
+  color: #9fa8bf !important;
+}
+.nav-list-link:hover {
+  color:  #1761fd !important;
+}
+.nav-list-link.active{
+  color: #1761fd !important;
+}
+.main{
+  margin-left: 260px;
+  max-width: 100%;
+}
+
+.nav-list .nav-list-item .nav-list-link:hover, .nav-list .nav-list-item .nav-list-link.active{
+  background-image: none;
+}
+ol > li >ol > li >ol{
+  /* width: 50%; */
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+}
+a.site-title,a.site-title:hover{
+  background-image: url("/assets/images/logo.png");
+  font-size: 0px !important;
+}
+
+</style>
+
+<script>
+  try{
+  var link = document.getElementsByClassName('site-title')[0];
+  link.innerHTML='<img src="/assets/images/logo.png" >';
+  var lists = document.getElementsByClassName("nav-list-item");
+    var max   = lists.length;
+    for (var i=0; i<max; i++) {
+      var list2 = document.getElementsByClassName("nav-list-item")[i];
+      list2.className += " active";
+    }
+
+  }
+  catch(error){
+  }
+
+function get_refresh_token(idp_base_url,idp_url) {
+    fetch(`${idp_base_url}/accounts/token/${localStorage.getItem("client_id")}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ "refresh_token": localStorage.getItem("refresh_token"), "grant_type": "refresh_token" })
+    }).then(res => {
+      if (res.status != 200) {
+        clear_local_storage();
+        window.open(idp_url, "_self");
+      }
+      return res.json();
+      
+    }).then(res=>{
+      if(res.AccessToken){
+        if (search_params.get("refresh_token")) {
+        window.location.href = window.location.href.split("?")[0];
+      }
+      else {
+        localStorage.setItem("access_token", res['AccessToken']);
+        document.getElementsByTagName("body")[0].style = "display:block";
+      }
+    }
+    }).catch((error) => {
+      clear_local_storage();
+      window.open(idp_url, "_self");
+    });
+  }
+
+  var idp_base_url = "{{site.idp_url}}";
+  idp_url = `${idp_base_url}/accounts/login/?redirect_uri=${window.location.origin}`;
+  var search_params = new URLSearchParams();
+  if (window.location.search) {
+    search_params = new URLSearchParams(window.location.search);
+    if (search_params.get("refresh_token"))
+      localStorage.setItem("refresh_token", search_params.get('refresh_token'));
+    if (search_params.get("client_id")) {
+      localStorage.setItem("client_id", search_params.get('client_id'))
+    }
+  }
+  if (localStorage.getItem("refresh_token") && localStorage.getItem("client_id")) {
+    if (localStorage.getItem("access_token")) {
+      fetch(`${idp_base_url}/accounts/me/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("access_token")}`
+        }
+      }
+      ).then(res => {
+        if (res.status != 200) {
+          get_refresh_token(idp_base_url,idp_url);
+          return {};
+        }else{
+          document.getElementsByTagName("body")[0].style = "display:block";
+        }
+        
+      }).catch((error) => {
+        get_refresh_token(idp_base_url,idp_url);
+      });
+    } else {
+      get_refresh_token(idp_base_url,idp_url);
+    }
+  } else {
+    clear_local_storage();
+    window.open(idp_url, "_self");
+  }
+
+function clear_local_storage(){
+  localStorage.removeItem("refresh_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("client_id");
+}
+
+</script>
+{{ content }}
