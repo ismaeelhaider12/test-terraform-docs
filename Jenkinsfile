@@ -22,10 +22,9 @@ pipeline {
          sh "mv tfdocs-format-template /home/ubuntu/.tfdocs.d/plugins"
          sh "who"
          sh "ls"
-         sh "cd complianceX/aws/terraform/PCI/VPC/1.0"
+         sh "cd complianceX/aws/terraform/PCI/VPC/1.0 && terraform-docs -c ./.terraform-docs.yml ."
          sh "pwd"
          sh "ls -la"
-         sh "terraform-docs -c ./.terraform-docs.yml ."
          sh "successfull"
       }
     }  
