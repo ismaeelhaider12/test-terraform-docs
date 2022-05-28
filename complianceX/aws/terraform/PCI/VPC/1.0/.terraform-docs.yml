@@ -1,4 +1,4 @@
-formatter: template
+formatter: tfvars json
 
 sections:
   show:
