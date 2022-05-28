@@ -20,9 +20,8 @@ pipeline {
                 script {
                     def browsers = ["Aurora","Autoscaling","CodePipeline","DynamoDB","VPC"]
                     for (int i = 0; i < browsers.size(); ++i) {
-                        cd complianceX/aws/terraform/PCI/${browsers[i]}/1.0 && terraform-docs -c ./.terraform-docs.yml .
-                        // echo "Testing the ${browsers[i]} browser"
-                        sh "whoami"
+                        sh `cd complianceX/aws/terraform/PCI/${browsers[i]}/1.0 && terraform-docs -c ./.terraform-docs.yml .`
+                        sh `whoami`
                     }
                 }
         }
