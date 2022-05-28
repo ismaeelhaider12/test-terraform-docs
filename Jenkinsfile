@@ -12,11 +12,18 @@ pipeline {
      
     stage('Build') {
       steps {
-         sh "whoami"
-         sh "mkdir -p ~/.tfdocs.d/plugins "
-         sh "mv tfdocs-format-template ~/.tfdocs.d/plugins"
-         sh "cd complianceX/aws/terraform/PCI/VPC/1.0 && terraform-docs -c ./.terraform-docs.yml ."
-      }
+                echo 'Hello World'
+                whoami
+                mkdir -p ~/.tfdocs.d/plugins
+                mv tfdocs-format-template ~/.tfdocs.d/plugins
+
+                script {
+                    def browsers = ['chrome', 'firefox']
+                    for (int i = 0; i < browsers.size(); ++i) {
+                        echo "Testing the ${browsers[i]} browser"
+                    }
+                }
+            }
     }  
 
   }
