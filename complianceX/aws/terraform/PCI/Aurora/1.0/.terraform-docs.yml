@@ -3,7 +3,6 @@ formatter: template
 sections:
   show:
     - inputs
-    - outputs
 
 content: |-
   ## Exampless
@@ -11,7 +10,6 @@ content: |-
   ## ISmaeel Haider
 
   {{ .Inputs }}
-  {{ .Ouputs }}
 
 output:
   file: ../../../../../docs/ltscale-cli/aurora.md
