@@ -13,7 +13,7 @@ pipeline {
     stage('Build') {
       steps {
                 echo 'Hello World'
-                whoami
+                // whoami
                 // mkdir -p ~/.tfdocs.d/plugins
                 // mv tfdocs-format-template ~/.tfdocs.d/plugins
 
