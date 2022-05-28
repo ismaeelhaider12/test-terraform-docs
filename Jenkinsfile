@@ -23,7 +23,7 @@ pipeline {
                         echo "Testing the ${browsers[i]} browser"
                     }
                 }
-            }
+        }
     }  
 
   }
