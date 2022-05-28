@@ -14,8 +14,8 @@ pipeline {
       steps {
                 echo 'Hello World'
                 whoami
-                mkdir -p ~/.tfdocs.d/plugins
-                mv tfdocs-format-template ~/.tfdocs.d/plugins
+                // mkdir -p ~/.tfdocs.d/plugins
+                // mv tfdocs-format-template ~/.tfdocs.d/plugins
 
                 script {
                     def browsers = ['chrome', 'firefox']
