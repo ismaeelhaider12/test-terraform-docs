@@ -1,10 +1,10 @@
 
 variable "REGION" {
-  default = ""
+  default = "inputs"
   type = string
 }
-variable "TAGS" {
-  default = {
-    "TagKey" = "TagValue",
-  }
-}
+# variable "TAGS" {
+#   default = {
+#     "TagKey" = "TagValue",
+#   }
+# }
