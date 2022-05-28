@@ -18,7 +18,7 @@ pipeline {
                 sh  "mv tfdocs-format-template ~/.tfdocs.d/plugins"
 
                 script {
-                    def browsers = ["Aurora","Autoscaling","CodePipeline","DynamoDB","VPC"]
+                    def browsers = ["Aurora","AutoScaling","CodePipeline","DynamoDB","VPC"]
                     for (int i = 0; i < browsers.size(); ++i) {
                         sh "data=${browsers[i]}"
                         sh "ls -la"
