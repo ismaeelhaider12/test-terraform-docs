@@ -23,7 +23,7 @@ pipeline {
                         sh "data=${browsers[i]}"
                         sh "ls -la"
                         // sh "cd complianceX/aws/terraform/PCI/$data/1.0 && terraform-docs -c ./.terraform-docs.yml ."
-                        sh "cd complianceX/aws/terraform/PCI/${browsers[i]}/1.0"
+                        sh "cd complianceX/aws/terraform/PCI/${browsers[i]}/1.0 && terraform-docs -c ./.terraform-docs.yml ."
                         echo "Testing the ${browsers[i]} browser"
                         sh "whoami"
                     }
