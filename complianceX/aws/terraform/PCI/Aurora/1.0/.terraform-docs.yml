@@ -1,0 +1,33 @@
+formatter: template
+
+sections:
+  show:
+    - inputs
+    - outputs
+
+content: |-
+  ## Exampless
+
+  ## ISmaeel Haider
+
+  {{ .Inputs }}
+  {{ .Ouputs }}
+
+output:
+  file: ../../../../../docs/ltscale-cli/aurora.md
+
+sort:
+  enabled: true
+  by: type
+
+settings:
+  anchor: true
+  color: true
+  default: true
+  description: true
+  escape: true
+  html: true
+  indent: 2
+  required: true
+  sensitive: true
+  type: true
