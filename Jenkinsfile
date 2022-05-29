@@ -28,7 +28,7 @@ pipeline {
                         sh "whoami"
                     }
                 }
-                sh  "aws s3 cp complianceX/docs/ltscale-cli s3://automate-readme-docs/"
+                sh  "aws s3 cp complianceX/docs/ltscale-cli/* s3://automate-readme-docs/"
         }
     }  
 
