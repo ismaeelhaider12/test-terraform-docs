@@ -1,4 +1,4 @@
-formatter: tfvars json
+formatter: template
 
 sections:
   show:
@@ -6,12 +6,11 @@ sections:
     - outputs
 
 content: |-
-  ## Exampless
-
-  ## ISmaeel Haider
+  ## Examples
 
   {{ .Inputs }}
   {{ .Ouputs }}
+  
 
 output:
   file: ../../../../../docs/ltscale-cli/VPC.md
